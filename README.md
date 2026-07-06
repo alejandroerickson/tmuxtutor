@@ -36,6 +36,20 @@ When you finish the basics, continue with:
 ./tmuxtutor-advanced
 ```
 
+## Run without installing
+
+Try it instantly -- no clone needed:
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/alejandroerickson/tmuxtutor/main/tmuxtutor)
+```
+
+For the advanced module:
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/alejandroerickson/tmuxtutor/main/tmuxtutor-advanced)
+```
+
 ## How it works
 
 Open two terminal windows (or tabs). In the first, run `./tmuxtutor`. The tutor
@@ -47,46 +61,6 @@ passed.
 <p align="center">
   <img src="docs/images/lesson-detach.png" alt="Two terminals side by side: lesson text on the right, tmux commands on the left" width="700">
 </p>
-
-## Curriculum
-
-### Basics (`./tmuxtutor`) -- 14 lessons
-
-| # | Lesson |
-|---|--------|
-| 1 | Create a Session |
-| 2 | Detach |
-| 3 | Reattach |
-| 4 | Create Windows |
-| 5 | Name Your Windows |
-| 6 | Split into Panes |
-| 7 | Split the Other Way |
-| 8 | Zoom a Pane |
-| 9 | Kill a Pane |
-| 10 | Create a Window |
-| 11 | Kill a Window |
-| 12 | Runtime Configuration |
-| 13 | Copy Mode |
-| 14 | Build a Workspace |
-
-### Advanced (`./tmuxtutor-advanced`) -- 14 lessons
-
-| # | Lesson |
-|---|--------|
-| 1 | Kill a Session |
-| 2 | Switch Between Sessions |
-| 3 | Resize Panes |
-| 4 | Swap Panes |
-| 5 | Pane Layouts |
-| 6 | Move Panes Between Windows |
-| 7 | Paste and Buffers |
-| 8 | Help and Introspection |
-| 9 | Edit tmux.conf |
-| 10 | Custom Key Bindings |
-| 11 | Synchronized Panes |
-| 12 | Script a Workspace |
-| 13 | SSH and tmux |
-| 14 | Build a Dev Environment |
 
 ## HTML reference companion
 
