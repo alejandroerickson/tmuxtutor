@@ -1,0 +1,1558 @@
+<title>tmux tutor — Reference</title>
+<style>
+  :root {
+    --ink: #1c1f26;
+    --paper: #f5f3ee;
+    --accent: #2a7f96;
+    --accent-light: #e8f4f8;
+    --muted: #7b8491;
+    --surface: #eae7e0;
+    --key-bg: #343842;
+    --key-fg: #e8dcc8;
+    --border: #d8d4cc;
+    --code-bg: #f0ede6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e0dbd2;
+      --paper: #13161d;
+      --accent: #4db8d4;
+      --accent-light: #1a2a32;
+      --muted: #8891a0;
+      --surface: #1d2028;
+      --key-bg: #2a2d36;
+      --key-fg: #d4c9b8;
+      --border: #2a2e38;
+      --code-bg: #191c24;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #e0dbd2;
+    --paper: #13161d;
+    --accent: #4db8d4;
+    --accent-light: #1a2a32;
+    --muted: #8891a0;
+    --surface: #1d2028;
+    --key-bg: #2a2d36;
+    --key-fg: #d4c9b8;
+    --border: #2a2e38;
+    --code-bg: #191c24;
+  }
+
+  :root[data-theme="light"] {
+    --ink: #1c1f26;
+    --paper: #f5f3ee;
+    --accent: #2a7f96;
+    --accent-light: #e8f4f8;
+    --muted: #7b8491;
+    --surface: #eae7e0;
+    --key-bg: #343842;
+    --key-fg: #e8dcc8;
+    --border: #d8d4cc;
+    --code-bg: #f0ede6;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--paper);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 240px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    z-index: 100;
+  }
+
+  .sidebar-header {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .sidebar-header h1 {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .sidebar-header p {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 2px 0 0;
+  }
+
+  .module-label {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--accent);
+    padding: 12px 16px 4px;
+    display: block;
+  }
+
+  .nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav-list li {
+    margin: 0;
+  }
+
+  .nav-list a {
+    display: block;
+    padding: 5px 16px 5px 20px;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1.4;
+  }
+
+  .nav-list a:hover {
+    color: var(--ink);
+    background: var(--paper);
+  }
+
+  .nav-list a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .nav-list a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .nav-num {
+    display: inline-block;
+    width: 20px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .sidebar-qr-link {
+    display: block;
+    padding: 10px 16px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .sidebar-qr-link:hover {
+    color: var(--ink);
+  }
+
+  /* ── Mobile nav toggle ───────────────────────────────── */
+
+  .nav-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+  }
+
+  .nav-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ── Main content ────────────────────────────────────── */
+
+  .main {
+    margin-left: 240px;
+    padding: 32px 24px 80px;
+  }
+
+  .content {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  /* ── Page header ─────────────────────────────────────── */
+
+  .page-header {
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header h1 {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  .page-header p {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 4px 0 0;
+  }
+
+  /* ── Module headings ─────────────────────────────────── */
+
+  .module-heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 19px;
+    font-weight: normal;
+    color: var(--accent);
+    margin: 48px 0 24px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    text-wrap: balance;
+  }
+
+  .module-heading:first-of-type {
+    margin-top: 0;
+  }
+
+  /* ── Lesson sections ─────────────────────────────────── */
+
+  .lesson {
+    margin-bottom: 40px;
+    scroll-margin-top: 24px;
+  }
+
+  .lesson-header {
+    margin-bottom: 12px;
+  }
+
+  .lesson-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  .lesson-header .lesson-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  .lesson-desc {
+    font-size: 15px;
+    color: var(--ink);
+    margin: 0 0 14px;
+    line-height: 1.55;
+  }
+
+  /* ── Sub-labels inside lessons ───────────────────────── */
+
+  .sub-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 16px 0 6px;
+  }
+
+  /* ── Keybinding chips ────────────────────────────────── */
+
+  kbd {
+    display: inline-block;
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1;
+    background: var(--key-bg);
+    color: var(--key-fg);
+    padding: 4px 7px;
+    border-radius: 3px;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    vertical-align: baseline;
+  }
+
+  .key-seq {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 3px 0;
+  }
+
+  .key-then {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 0 3px;
+    font-style: italic;
+  }
+
+  /* ── Commands list ───────────────────────────────────── */
+
+  .cmd-list {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 12px;
+  }
+
+  .cmd-list li {
+    margin-bottom: 4px;
+  }
+
+  .cmd-block {
+    display: block;
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: 13px;
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    border-radius: 0 3px 3px 0;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .cmd-block .prompt {
+    color: var(--muted);
+    user-select: none;
+  }
+
+  /* ── Keybinding rows ─────────────────────────────────── */
+
+  .key-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 5px 0;
+    flex-wrap: wrap;
+  }
+
+  .key-row .key-desc {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* ── Tip callouts ────────────────────────────────────── */
+
+  .tip {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 14px;
+    color: var(--ink);
+    border-radius: 0 4px 4px 0;
+    line-height: 1.5;
+  }
+
+  .tip strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Verification line ───────────────────────────────── */
+
+  .verify {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .verify-label {
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+  }
+
+  /* ── Quick Reference ─────────────────────────────────── */
+
+  .qr-section {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 2px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+
+  .qr-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+
+  .qr-section > p {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 24px;
+  }
+
+  .qr-group h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 15px;
+    font-weight: normal;
+    color: var(--accent);
+    margin: 24px 0 8px;
+  }
+
+  .qr-group h3:first-child {
+    margin-top: 0;
+  }
+
+  .qr-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 8px;
+  }
+
+  .qr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .qr-table td {
+    padding: 5px 0;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .qr-table td:first-child {
+    width: 52%;
+    padding-right: 12px;
+    white-space: nowrap;
+  }
+
+  .qr-table td:last-child {
+    color: var(--muted);
+  }
+
+  .qr-table kbd {
+    font-size: 12px;
+    padding: 3px 5px;
+  }
+
+  .qr-table .key-then {
+    font-size: 11px;
+  }
+
+  .qr-table code {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: 12.5px;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+
+  /* ── Responsive ──────────────────────────────────────── */
+
+  @media (max-width: 767px) {
+    .nav-toggle {
+      display: block;
+    }
+
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: none;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+    }
+
+    .main {
+      margin-left: 0;
+      padding: 56px 16px 60px;
+    }
+
+    .qr-table td:first-child {
+      white-space: normal;
+    }
+
+    .key-row {
+      gap: 6px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .sidebar { transition: none; }
+  }
+</style>
+
+<button class="nav-toggle" aria-label="Toggle navigation" onclick="document.querySelector('.sidebar').classList.toggle('open')">Menu</button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h1>tmux tutor</h1>
+    <p>Reference companion</p>
+  </div>
+
+  <span class="module-label">Basics</span>
+  <ul class="nav-list">
+    <li><a href="#b1"><span class="nav-num">1.</span> Create a Session</a></li>
+    <li><a href="#b2"><span class="nav-num">2.</span> Detach</a></li>
+    <li><a href="#b3"><span class="nav-num">3.</span> Reattach</a></li>
+    <li><a href="#b4"><span class="nav-num">4.</span> Create Windows</a></li>
+    <li><a href="#b5"><span class="nav-num">5.</span> Name Your Windows</a></li>
+    <li><a href="#b6"><span class="nav-num">6.</span> Split into Panes</a></li>
+    <li><a href="#b7"><span class="nav-num">7.</span> Split the Other Way</a></li>
+    <li><a href="#b8"><span class="nav-num">8.</span> Zoom a Pane</a></li>
+    <li><a href="#b9"><span class="nav-num">9.</span> Kill a Pane</a></li>
+    <li><a href="#b10"><span class="nav-num">10.</span> Create a Window</a></li>
+    <li><a href="#b11"><span class="nav-num">11.</span> Kill a Window</a></li>
+    <li><a href="#b12"><span class="nav-num">12.</span> Runtime Config</a></li>
+    <li><a href="#b13"><span class="nav-num">13.</span> Copy Mode</a></li>
+    <li><a href="#b14"><span class="nav-num">14.</span> Build a Workspace</a></li>
+  </ul>
+
+  <span class="module-label">Advanced</span>
+  <ul class="nav-list">
+    <li><a href="#a1"><span class="nav-num">1.</span> Kill a Session</a></li>
+    <li><a href="#a2"><span class="nav-num">2.</span> Switch Sessions</a></li>
+    <li><a href="#a3"><span class="nav-num">3.</span> Resize Panes</a></li>
+    <li><a href="#a4"><span class="nav-num">4.</span> Swap Panes</a></li>
+    <li><a href="#a5"><span class="nav-num">5.</span> Pane Layouts</a></li>
+    <li><a href="#a6"><span class="nav-num">6.</span> Move Panes</a></li>
+    <li><a href="#a7"><span class="nav-num">7.</span> Paste and Buffers</a></li>
+    <li><a href="#a8"><span class="nav-num">8.</span> Help / Introspection</a></li>
+    <li><a href="#a9"><span class="nav-num">9.</span> Edit tmux.conf</a></li>
+    <li><a href="#a10"><span class="nav-num">10.</span> Custom Bindings</a></li>
+    <li><a href="#a11"><span class="nav-num">11.</span> Synchronized Panes</a></li>
+    <li><a href="#a12"><span class="nav-num">12.</span> Script a Workspace</a></li>
+    <li><a href="#a13"><span class="nav-num">13.</span> SSH and tmux</a></li>
+    <li><a href="#a14"><span class="nav-num">14.</span> Build a Dev Env</a></li>
+  </ul>
+
+  <a class="sidebar-qr-link" href="#quick-reference">Quick Reference</a>
+</nav>
+
+<main class="main">
+  <div class="content">
+
+    <header class="page-header">
+      <h1>tmux tutor</h1>
+      <p>Interactive reference &mdash; Basics &amp; Advanced</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!--  BASICS MODULE                                      -->
+    <!-- ════════════════════════════════════════════════════ -->
+
+    <h2 class="module-heading">Basics</h2>
+
+    <!-- B1 -->
+    <section class="lesson" id="b1">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 1</span> &mdash; Create a Session</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux organises everything into <strong>sessions</strong>. A session is the outermost container &mdash; it holds windows, panes, and processes. Named sessions are easier to find and reattach to later.
+      </p>
+      <div class="sub-label">Commands</div>
+      <code class="cmd-block"><span class="prompt">$ </span>tmux new -s learn</code>
+      <div class="tip">
+        <strong>Tip:</strong> The <code>-s</code> flag names the session. A green status bar at the bottom means you are inside tmux.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> The tutor checks that a session named "learn" exists.
+      </div>
+    </section>
+
+    <!-- B2 -->
+    <section class="lesson" id="b2">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 2</span> &mdash; Detach</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux's killer feature: you can <strong>detach</strong> from a session and it keeps running in the background. Close your laptop, SSH back tomorrow &mdash; the session is still there.
+      </p>
+      <div class="sub-label">Keybinding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>d</kbd></span>
+        <span class="key-desc">detach from the current session</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> You will be dropped back to a regular shell prompt. The session is still running &mdash; just not attached to any terminal.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that session "learn" exists and is detached (attached=0).
+      </div>
+    </section>
+
+    <!-- B3 -->
+    <section class="lesson" id="b3">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 3</span> &mdash; Reattach</h3>
+      </div>
+      <p class="lesson-desc">
+        Your "learn" session is still running in the background. Reattach to pick up where you left off.
+      </p>
+      <div class="sub-label">Commands</div>
+      <code class="cmd-block"><span class="prompt">$ </span>tmux attach -t learn</code>
+      <div class="tip">
+        <strong>Shorthand:</strong> <code>tmux a</code> attaches to the most recent session. List all sessions with <code>tmux ls</code>.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that session "learn" is attached (attached != 0).
+      </div>
+    </section>
+
+    <!-- B4 -->
+    <section class="lesson" id="b4">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 4</span> &mdash; Create Windows</h3>
+      </div>
+      <p class="lesson-desc">
+        Inside a session you can have multiple <strong>windows</strong> &mdash; think of them as tabs. Each is a full-screen terminal.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>c</kbd></span>
+        <span class="key-desc">create a new window</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>n</kbd></span>
+        <span class="key-desc">next window</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>p</kbd></span>
+        <span class="key-desc">previous window</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>0</kbd></span>
+        <span class="key-desc">jump to window 0</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> Look at the status bar &mdash; the <code>*</code> marks the active window.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that the "learn" session has at least 2 windows.
+      </div>
+    </section>
+
+    <!-- B5 -->
+    <section class="lesson" id="b5">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 5</span> &mdash; Name Your Windows</h3>
+      </div>
+      <p class="lesson-desc">
+        Window names like "0:zsh" don't tell you much. Give them meaningful names so the status bar is useful at a glance.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>0</kbd></span>
+        <span class="key-desc">go to window 0</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></span>
+        <span class="key-desc">rename the current window (type <code>main</code>, press Enter)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>1</kbd></span>
+        <span class="key-desc">go to window 1</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></span>
+        <span class="key-desc">rename it (type <code>work</code>, press Enter)</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for windows named "main" and "work" in the "learn" session.
+      </div>
+    </section>
+
+    <!-- B6 -->
+    <section class="lesson" id="b6">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 6</span> &mdash; Split into Panes</h3>
+      </div>
+      <p class="lesson-desc">
+        A window can be divided into <strong>panes</strong> &mdash; multiple terminals visible at once. Navigate to the "work" window and split it.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>%</kbd></span>
+        <span class="key-desc">split left / right (vertical divider)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>"</kbd></span>
+        <span class="key-desc">split top / bottom (horizontal divider)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>arrow keys</kbd></span>
+        <span class="key-desc">move between panes</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>o</kbd></span>
+        <span class="key-desc">cycle to next pane</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> Use <kbd>Ctrl+b</kbd> <span class="key-then">then</span> <kbd>w</kbd> to open the interactive window list.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that the "work" window has at least 2 panes.
+      </div>
+    </section>
+
+    <!-- B7 -->
+    <section class="lesson" id="b7">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 7</span> &mdash; Split the Other Way</h3>
+      </div>
+      <p class="lesson-desc">
+        Add a second split in a different direction to build a multi-pane layout. If you split vertically last time, try horizontal now (or vice versa).
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>%</kbd></span>
+        <span class="key-desc">vertical split (if you split horizontally before)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>"</kbd></span>
+        <span class="key-desc">horizontal split (if you split vertically before)</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> A typical layout is an editor on the left, tests top-right, logs bottom-right. You should end up with 3 panes.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for at least 3 panes in the "work" window.
+      </div>
+    </section>
+
+    <!-- B8 -->
+    <section class="lesson" id="b8">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 8</span> &mdash; Zoom a Pane</h3>
+      </div>
+      <p class="lesson-desc">
+        When you need to focus on one pane, <strong>zoom</strong> it to fill the entire window. The other panes stay alive &mdash; just hidden.
+      </p>
+      <div class="sub-label">Keybinding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>z</kbd></span>
+        <span class="key-desc">toggle zoom on the current pane</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> The status bar shows a <code>Z</code> flag when a pane is zoomed. Press the same combo again to unzoom.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that the "work" window has a zoomed pane (zoomed_flag=1).
+      </div>
+    </section>
+
+    <!-- B9 -->
+    <section class="lesson" id="b9">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 9</span> &mdash; Kill a Pane</h3>
+      </div>
+      <p class="lesson-desc">
+        Remove a pane you no longer need. First unzoom if the window is still zoomed, then kill one of the three panes.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>z</kbd></span>
+        <span class="key-desc">toggle zoom off</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>x</kbd></span>
+        <span class="key-desc">kill current pane (press <code>y</code> to confirm)</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for exactly 2 panes in "work" and no zoom.
+      </div>
+    </section>
+
+    <!-- B10 -->
+    <section class="lesson" id="b10">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 10</span> &mdash; Create a Window</h3>
+      </div>
+      <p class="lesson-desc">
+        Practice the full window lifecycle. Create a temporary window and name it "scratch".
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>c</kbd></span>
+        <span class="key-desc">create a new window</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></span>
+        <span class="key-desc">rename it to <code>scratch</code></span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for 3 windows in "learn" including one named "scratch".
+      </div>
+    </section>
+
+    <!-- B11 -->
+    <section class="lesson" id="b11">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 11</span> &mdash; Kill a Window</h3>
+      </div>
+      <p class="lesson-desc">
+        Now remove the "scratch" window you just created.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>w</kbd></span>
+        <span class="key-desc">interactive window list &mdash; select scratch</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>&amp;</kbd></span>
+        <span class="key-desc">kill current window (press <code>y</code> to confirm)</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for exactly 2 windows (main + work) with no "scratch".
+      </div>
+    </section>
+
+    <!-- B12 -->
+    <section class="lesson" id="b12">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 12</span> &mdash; Runtime Configuration</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux settings can be changed at runtime through the command prompt. Open it, type a command, and press Enter.
+      </p>
+      <div class="sub-label">Keybinding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">open the tmux command prompt</span>
+      </div>
+      <div class="sub-label">Commands (type these at the prompt)</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">: </span>set -g mouse on</code></li>
+        <li><code class="cmd-block"><span class="prompt">: </span>set -g mode-keys vi</code></li>
+      </ul>
+      <div class="tip">
+        <strong>Tip:</strong> The command prompt supports Tab completion. <code>mouse on</code> enables click-to-select panes, scroll with wheel, and drag-to-resize. <code>mode-keys vi</code> enables vim keybindings in copy mode. To make these permanent, add them to <code>~/.tmux.conf</code>.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that mouse=on and mode-keys=vi in the running server.
+      </div>
+    </section>
+
+    <!-- B13 -->
+    <section class="lesson" id="b13">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 13</span> &mdash; Copy Mode</h3>
+      </div>
+      <p class="lesson-desc">
+        Copy mode lets you scroll, search, and copy text without a mouse. You will copy a marker string into the tmux paste buffer.
+      </p>
+      <div class="sub-label">Step 1 &mdash; Print the marker</div>
+      <code class="cmd-block"><span class="prompt">$ </span>echo TMUXTUTOR_COPY_TEST</code>
+      <div class="sub-label">Step 2 &mdash; Enter copy mode</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>[</kbd></span>
+      </div>
+      <div class="sub-label">Step 3 &mdash; Find, select, copy (vi keys)</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>/</kbd></span>
+        <span class="key-desc">search &mdash; type <code>TMUXTUTOR_COPY_TEST</code>, press Enter</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Space</kbd></span>
+        <span class="key-desc">start selection</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>e</kbd></span>
+        <span class="key-desc">extend to end of word</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Enter</kbd></span>
+        <span class="key-desc">copy and exit copy mode</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that the tmux paste buffer contains "TMUXTUTOR_COPY_TEST".
+      </div>
+    </section>
+
+    <!-- B14 -->
+    <section class="lesson" id="b14">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 14</span> &mdash; Build a Workspace</h3>
+      </div>
+      <p class="lesson-desc">
+        Capstone: put it all together. Build a workspace from scratch with a new session, named windows, and pane splits.
+      </p>
+      <div class="sub-label">Steps</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>d</kbd></span>
+        <span class="key-desc">detach from "learn"</span>
+      </div>
+      <code class="cmd-block"><span class="prompt">$ </span>tmux new -s project</code>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></span>
+        <span class="key-desc">rename the first window to <code>editor</code></span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>%</kbd></span>
+        <span class="key-desc">split it vertically</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>c</kbd></span>
+        <span class="key-desc">create a second window</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></span>
+        <span class="key-desc">rename it to <code>shell</code></span>
+      </div>
+      <div class="tip">
+        <strong>Result:</strong> Session "project" with "editor" (2 panes) + "shell".
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for session "project" with windows "editor" (2+ panes) and "shell".
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!--  ADVANCED MODULE                                    -->
+    <!-- ════════════════════════════════════════════════════ -->
+
+    <h2 class="module-heading">Advanced</h2>
+
+    <!-- A1 -->
+    <section class="lesson" id="a1">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 1</span> &mdash; Kill a Session</h3>
+      </div>
+      <p class="lesson-desc">
+        Sessions accumulate. Sometimes you need to kill one. Create two throwaway sessions, then kill only the first.
+      </p>
+      <div class="sub-label">Commands</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new -d -s temp1</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new -d -s temp2</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux ls</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux kill-session -t temp1</code></li>
+      </ul>
+      <div class="tip">
+        <strong>Tip:</strong> The <code>-d</code> flag creates sessions in the background (detached). The nuclear option <code>tmux kill-server</code> destroys every session &mdash; use with caution.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that temp1 is gone and temp2 is still alive.
+      </div>
+    </section>
+
+    <!-- A2 -->
+    <section class="lesson" id="a2">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 2</span> &mdash; Switch Between Sessions</h3>
+      </div>
+      <p class="lesson-desc">
+        When you have multiple sessions, you can switch between them without detaching and reattaching.
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>s</kbd></span>
+        <span class="key-desc">interactive session list</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>)</kbd></span>
+        <span class="key-desc">next session</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>(</kbd></span>
+        <span class="key-desc">previous session</span>
+      </div>
+      <div class="sub-label">Or via command prompt</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>switch-client -t temp2</code></span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for at least 2 sessions with at least 1 attached.
+      </div>
+    </section>
+
+    <!-- A3 -->
+    <section class="lesson" id="a3">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 3</span> &mdash; Resize Panes</h3>
+      </div>
+      <p class="lesson-desc">
+        Control pane geometry. Create session "adv" with a "resize" window, split it, then make the right pane wider.
+      </p>
+      <div class="sub-label">Setup commands</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new -d -s adv -n resize</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux split-window -h -t '=adv:=resize'</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux attach -t adv</code></li>
+      </ul>
+      <div class="sub-label">Resize methods</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>Ctrl+Right</kbd></span>
+        <span class="key-desc">grow right by 1 cell (repeat)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>resize-pane -R 20</code></span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> The command prompt supports Tab completion &mdash; type <code>resi</code> then press Tab. Goal: the right pane should be wider than 55% of the window.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that pane 1 occupies at least 55% of the window width.
+      </div>
+    </section>
+
+    <!-- A4 -->
+    <section class="lesson" id="a4">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 4</span> &mdash; Swap Panes</h3>
+      </div>
+      <p class="lesson-desc">
+        Swap the positions of two panes without moving yourself or retyping anything. Put identifying text in each pane, then swap them.
+      </p>
+      <div class="sub-label">Target a pane by number</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>q</kbd><span class="key-then">then</span><kbd>0</kbd></span>
+        <span class="key-desc">flash pane numbers, then select pane 0</span>
+      </div>
+      <div class="sub-label">Swap keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>{</kbd></span>
+        <span class="key-desc">swap current pane with the previous one</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>}</kbd></span>
+        <span class="key-desc">swap current pane with the next one</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Captures pane contents and checks that pane 0 shows PANE_B and pane 1 shows PANE_A (swapped).
+      </div>
+    </section>
+
+    <!-- A5 -->
+    <section class="lesson" id="a5">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 5</span> &mdash; Pane Layouts</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux has built-in layout presets that rearrange all panes at once. Add a third pane to "resize", then cycle through layouts.
+      </p>
+      <div class="sub-label">Keybinding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>Space</kbd></span>
+        <span class="key-desc">cycle through layout presets</span>
+      </div>
+      <div class="sub-label">Or set a specific layout</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>select-layout tiled</code></span>
+      </div>
+      <div class="tip">
+        <strong>Available layouts:</strong>
+        <code>even-horizontal</code> (equal columns),
+        <code>even-vertical</code> (equal rows),
+        <code>main-horizontal</code> (big top, rest below),
+        <code>main-vertical</code> (big left, rest right),
+        <code>tiled</code> (grid).
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for at least 3 panes in the "resize" window.
+      </div>
+    </section>
+
+    <!-- A6 -->
+    <section class="lesson" id="a6">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 6</span> &mdash; Move Panes Between Windows</h3>
+      </div>
+      <p class="lesson-desc">
+        Panes can be broken out of a window or joined into another. Create a "staging" window, break a pane from "resize", and join it into "staging".
+      </p>
+      <div class="sub-label">Keybindings</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>!</kbd></span>
+        <span class="key-desc">break current pane into its own window</span>
+      </div>
+      <div class="sub-label">Join via command prompt</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>join-pane -t :staging</code></span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that "staging" window has at least 2 panes.
+      </div>
+    </section>
+
+    <!-- A7 -->
+    <section class="lesson" id="a7">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 7</span> &mdash; Paste and Buffers</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux maintains its own paste buffers independent of the system clipboard. Copy text in copy mode and paste it back. Multiple copies stack up.
+      </p>
+      <div class="sub-label">Copy flow (vi keys)</div>
+      <code class="cmd-block"><span class="prompt">$ </span>echo ADVANCED_PASTE_TEST</code>
+      <div class="key-row" style="margin-top:8px">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>[</kbd></span>
+        <span class="key-desc">enter copy mode</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>/</kbd></span>
+        <span class="key-desc">search, then <kbd>Space</kbd> to select, <kbd>Enter</kbd> to copy</span>
+      </div>
+      <div class="sub-label">Paste and buffer management</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>]</kbd></span>
+        <span class="key-desc">paste the most recent buffer</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>=</kbd></span>
+        <span class="key-desc">choose from buffer list</span>
+      </div>
+      <code class="cmd-block"><span class="prompt">$ </span>tmux list-buffers</code>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that the paste buffer contains "ADVANCED_PASTE_TEST".
+      </div>
+    </section>
+
+    <!-- A8 -->
+    <section class="lesson" id="a8">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 8</span> &mdash; Help and Introspection</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux has a built-in help system. Browse every keybinding, query options, and inspect the running server.
+      </p>
+      <div class="sub-label">Keybinding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>?</kbd></span>
+        <span class="key-desc">list all keybindings (q to exit)</span>
+      </div>
+      <div class="sub-label">Shell commands</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux list-keys</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux show-options -g</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux info</code></li>
+      </ul>
+      <div class="sub-label">Discovered binding</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>l</kbd></span>
+        <span class="key-desc">switch to the last-used window</span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that session "adv" has at least 2 windows.
+      </div>
+    </section>
+
+    <!-- A9 -->
+    <section class="lesson" id="a9">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 9</span> &mdash; Edit tmux.conf</h3>
+      </div>
+      <p class="lesson-desc">
+        Runtime settings vanish when the server exits. Put them in <code>~/.tmux.conf</code> to make them permanent.
+      </p>
+      <div class="sub-label">Recommended config lines</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block">set -g mouse on</code></li>
+        <li><code class="cmd-block">set -g mode-keys vi</code></li>
+        <li><code class="cmd-block">set -g history-limit 50000</code></li>
+        <li><code class="cmd-block">set -g base-index 1</code></li>
+        <li><code class="cmd-block">set -g status-style 'bg=colour235 fg=colour75'</code></li>
+      </ul>
+      <div class="sub-label">Reload the config</div>
+      <code class="cmd-block"><span class="prompt">$ </span>tmux source-file ~/.tmux.conf</code>
+      <div class="tip">
+        <strong>Tip:</strong> You can also reload from the tmux command prompt: <kbd>Ctrl+b</kbd> <span class="key-then">then</span> <kbd>:</kbd> then type <code>source-file ~/.tmux.conf</code>. Back up any existing config first with <code>cp ~/.tmux.conf ~/.tmux.conf.bak</code>.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that ~/.tmux.conf contains mouse on, mode-keys vi, and history-limit, and that they are active in the running server.
+      </div>
+    </section>
+
+    <!-- A10 -->
+    <section class="lesson" id="a10">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 10</span> &mdash; Custom Key Bindings</h3>
+      </div>
+      <p class="lesson-desc">
+        The default split keys <code>%</code> and <code>"</code> are hard to remember. Bind more intuitive keys that look like the dividers they create.
+      </p>
+      <div class="sub-label">Add to ~/.tmux.conf</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block">bind | split-window -h -c "#{pane_current_path}"</code></li>
+        <li><code class="cmd-block">bind - split-window -v -c "#{pane_current_path}"</code></li>
+      </ul>
+      <div class="sub-label">After reloading config</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>|</kbd></span>
+        <span class="key-desc">split side by side (vertical divider)</span>
+      </div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>-</kbd></span>
+        <span class="key-desc">split stacked (horizontal divider)</span>
+      </div>
+      <div class="tip">
+        <strong>Tip:</strong> The <code>-c "#{pane_current_path}"</code> flag opens the new pane in the same directory as the current pane.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that both bindings exist in ~/.tmux.conf and are loaded into the running server.
+      </div>
+    </section>
+
+    <!-- A11 -->
+    <section class="lesson" id="a11">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 11</span> &mdash; Synchronized Panes</h3>
+      </div>
+      <p class="lesson-desc">
+        Type the same command into multiple panes at once &mdash; useful for updating several servers simultaneously.
+      </p>
+      <div class="sub-label">Turn sync on</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>setw synchronize-panes on</code></span>
+      </div>
+      <div class="sub-label">Turn sync off</div>
+      <div class="key-row">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></span>
+        <span class="key-desc">then type <code>setw synchronize-panes off</code></span>
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that synchronize-panes is "on" and the current window has 2+ panes.
+      </div>
+    </section>
+
+    <!-- A12 -->
+    <section class="lesson" id="a12">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 12</span> &mdash; Script a Workspace</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux's real power is scripting. Every command you have used interactively can be run from a shell script to build a workspace automatically.
+      </p>
+      <div class="sub-label">Key concepts</div>
+      <div class="tip">
+        <strong><code>-d</code></strong> create detached &mdash;
+        <strong><code>-t session:window</code></strong> target a window &mdash;
+        <strong><code>-t session:window.pane</code></strong> target a pane &mdash;
+        <strong><code>send-keys ... Enter</code></strong> type a command into a pane.
+      </div>
+      <div class="sub-label">Scripted commands</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-session -d -s dev -n editor</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux split-window -h -t dev:editor</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-window -t dev -n logs</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux send-keys -t dev:editor.0 'echo EDITOR_READY' Enter</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux send-keys -t dev:logs 'echo LOGS_READY' Enter</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux attach -t dev</code></li>
+      </ul>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks for session "dev" with "editor" (2+ panes, EDITOR_READY marker) and "logs" (LOGS_READY marker).
+      </div>
+    </section>
+
+    <!-- A13 -->
+    <section class="lesson" id="a13">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 13</span> &mdash; SSH and tmux</h3>
+      </div>
+      <p class="lesson-desc">
+        tmux really shines over SSH. Set up a real SSH server, connect from another device, and attach to a tmux session remotely. If the connection drops, the session keeps running &mdash; just reconnect and reattach.
+      </p>
+      <div class="sub-label">Step 1 &mdash; Install and start the SSH server</div>
+      <p class="lesson-desc" style="margin-bottom:6px"><strong>Ubuntu / Debian:</strong></p>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo apt install openssh-server</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo systemctl enable ssh &amp;&amp; sudo systemctl start ssh</code></li>
+      </ul>
+      <p class="lesson-desc" style="margin-bottom:6px"><strong>Fedora:</strong></p>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo dnf install openssh-server</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo systemctl enable sshd &amp;&amp; sudo systemctl start sshd</code></li>
+      </ul>
+      <p class="lesson-desc" style="margin-bottom:6px"><strong>Arch:</strong></p>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo pacman -S openssh</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo systemctl enable sshd &amp;&amp; sudo systemctl start sshd</code></li>
+      </ul>
+      <p class="lesson-desc" style="margin-bottom:6px"><strong>macOS:</strong></p>
+      <p class="lesson-desc" style="margin-top:0">Enable via System Settings &rarr; General &rarr; Sharing &rarr; Remote Login, or:</p>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>sudo systemsetup -setremotelogin on</code></li>
+      </ul>
+      <div class="sub-label">Step 2 &mdash; Create a tmux session to connect to</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new -d -s remote</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux send-keys -t remote 'echo SSH_WORKFLOW_TEST' Enter</code></li>
+      </ul>
+      <div class="sub-label">Step 3 &mdash; Find your IP address</div>
+      <code class="cmd-block"><span class="prompt">$ </span>hostname -I</code>
+      <div class="sub-label">Step 4 &mdash; SSH in from another device and attach</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>ssh user@&lt;your-ip&gt;</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux attach -t remote</code></li>
+      </ul>
+      <div class="tip">
+        <strong>Attach-or-create:</strong> <code>tmux new -A -s &lt;name&gt;</code> attaches if the session exists, or creates it if not. The "always works" command.
+      </div>
+      <div class="tip">
+        <strong>WAN access:</strong> To connect from outside your local network, set up port forwarding on your router (port 22) or use <code>Tailscale</code> for a zero-config VPN.
+      </div>
+      <div class="tip">
+        <strong>Security:</strong> Set up SSH key authentication and disable password login for production servers. See <code>ssh-keygen</code> and <code>~/.ssh/authorized_keys</code>.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks that sshd is running, session "remote" exists, marker text "SSH_WORKFLOW_TEST" is present, and the session is attached.
+      </div>
+    </section>
+
+    <!-- A14 -->
+    <section class="lesson" id="a14">
+      <div class="lesson-header">
+        <h3><span class="lesson-num">Lesson 14</span> &mdash; Build a Dev Environment</h3>
+      </div>
+      <p class="lesson-desc">
+        Capstone: build a multi-session dev environment from scratch using scripted commands. Two sessions, each with multiple windows and panes.
+      </p>
+      <div class="sub-label">Backend session</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-session -d -s backend -n api</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux split-window -h -t backend:api</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-window -t backend -n db</code></li>
+      </ul>
+      <div class="sub-label">Frontend session</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-session -d -s frontend -n app</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux split-window -h -t frontend:app</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux new-window -t frontend -n tests</code></li>
+      </ul>
+      <div class="sub-label">Send markers and attach</div>
+      <ul class="cmd-list">
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux send-keys -t backend:api.0 'echo BACKEND_API' Enter</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux send-keys -t frontend:app.0 'echo FRONTEND_APP' Enter</code></li>
+        <li><code class="cmd-block"><span class="prompt">$ </span>tmux attach -t backend</code></li>
+      </ul>
+      <div class="key-row" style="margin-top:8px">
+        <span class="key-seq"><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>s</kbd></span>
+        <span class="key-desc">switch between backend and frontend</span>
+      </div>
+      <div class="tip">
+        <strong>Result:</strong> Two sessions (backend + frontend), each with named windows and split panes. Imagine scripting this into a single <code>dev-start.sh</code> you run every morning.
+      </div>
+      <div class="verify">
+        <span class="verify-label">Verify:</span> Checks both sessions exist with correct windows, pane counts, and marker text.
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!--  QUICK REFERENCE                                    -->
+    <!-- ════════════════════════════════════════════════════ -->
+
+    <section class="qr-section" id="quick-reference">
+      <h2>Quick Reference</h2>
+      <p>All keybindings and commands taught across both modules.</p>
+
+      <div class="qr-group">
+        <h3>Sessions</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><code>tmux new -s &lt;name&gt;</code></td><td>Create a named session</td></tr>
+            <tr><td><code>tmux new -d -s &lt;name&gt;</code></td><td>Create detached (background)</td></tr>
+            <tr><td><code>tmux new -A -s &lt;name&gt;</code></td><td>Attach or create</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>d</kbd></td><td>Detach from session</td></tr>
+            <tr><td><code>tmux attach -t &lt;name&gt;</code></td><td>Reattach to session</td></tr>
+            <tr><td><code>tmux a</code></td><td>Attach to most recent session</td></tr>
+            <tr><td><code>tmux ls</code></td><td>List all sessions</td></tr>
+            <tr><td><code>tmux kill-session -t &lt;name&gt;</code></td><td>Kill a session</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>s</kbd></td><td>Interactive session list</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>)</kbd></td><td>Next session</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>(</kbd></td><td>Previous session</td></tr>
+            <tr><td><code>switch-client -t &lt;name&gt;</code></td><td>Switch to named session (at prompt)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="qr-group">
+        <h3>Windows</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>c</kbd></td><td>Create a new window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>,</kbd></td><td>Rename current window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>n</kbd></td><td>Next window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>p</kbd></td><td>Previous window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>0</kbd>&ndash;<kbd>9</kbd></td><td>Jump to window by number</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>w</kbd></td><td>Interactive window list</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>l</kbd></td><td>Last-used window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>&amp;</kbd></td><td>Kill current window (confirm y)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="qr-group">
+        <h3>Panes</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>%</kbd></td><td>Split left / right</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>"</kbd></td><td>Split top / bottom</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>|</kbd></td><td>Split left / right (custom binding)</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>-</kbd></td><td>Split top / bottom (custom binding)</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>arrow keys</kbd></td><td>Move between panes</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>o</kbd></td><td>Cycle to next pane</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>q</kbd></td><td>Show pane numbers</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>z</kbd></td><td>Toggle zoom</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>x</kbd></td><td>Kill pane (confirm y)</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>{</kbd></td><td>Swap with previous pane</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>}</kbd></td><td>Swap with next pane</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>!</kbd></td><td>Break pane into own window</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>Space</kbd></td><td>Cycle layout presets</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>Ctrl+arrow</kbd></td><td>Resize pane</td></tr>
+            <tr><td><code>resize-pane -R &lt;n&gt;</code></td><td>Resize by n cells (at prompt)</td></tr>
+            <tr><td><code>join-pane -t :&lt;window&gt;</code></td><td>Join pane into another window (at prompt)</td></tr>
+            <tr><td><code>select-layout &lt;name&gt;</code></td><td>Set layout preset (at prompt)</td></tr>
+            <tr><td><code>setw synchronize-panes on|off</code></td><td>Sync input across panes (at prompt)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="qr-group">
+        <h3>Copy Mode</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>[</kbd></td><td>Enter copy mode</td></tr>
+            <tr><td><kbd>/</kbd> <em>then text</em></td><td>Search (in copy mode)</td></tr>
+            <tr><td><kbd>Space</kbd></td><td>Start selection (in copy mode)</td></tr>
+            <tr><td><kbd>e</kbd></td><td>Extend to end of word (in copy mode)</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Copy selection and exit</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>]</kbd></td><td>Paste most recent buffer</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>=</kbd></td><td>Choose from buffer list</td></tr>
+            <tr><td><code>tmux list-buffers</code></td><td>List all paste buffers</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="qr-group">
+        <h3>Config</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>:</kbd></td><td>Open command prompt</td></tr>
+            <tr><td><kbd>Ctrl+b</kbd><span class="key-then">then</span><kbd>?</kbd></td><td>List all keybindings</td></tr>
+            <tr><td><code>set -g mouse on</code></td><td>Enable mouse support</td></tr>
+            <tr><td><code>set -g mode-keys vi</code></td><td>Vi keybindings in copy mode</td></tr>
+            <tr><td><code>set -g history-limit 50000</code></td><td>Increase scrollback buffer</td></tr>
+            <tr><td><code>set -g base-index 1</code></td><td>Start window numbering at 1</td></tr>
+            <tr><td><code>tmux source-file ~/.tmux.conf</code></td><td>Reload config file</td></tr>
+            <tr><td><code>bind &lt;key&gt; &lt;command&gt;</code></td><td>Create a custom key binding</td></tr>
+            <tr><td><code>tmux list-keys</code></td><td>List all key bindings (shell)</td></tr>
+            <tr><td><code>tmux show-options -g</code></td><td>Show all global options</td></tr>
+            <tr><td><code>tmux info</code></td><td>Server and terminal info</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="qr-group">
+        <h3>Scripting</h3>
+        <div class="qr-table-wrap">
+          <table class="qr-table">
+            <tr><td><code>tmux new-session -d -s &lt;s&gt; -n &lt;w&gt;</code></td><td>Create session + named window (detached)</td></tr>
+            <tr><td><code>tmux new-window -t &lt;s&gt; -n &lt;w&gt;</code></td><td>Add a window to a session</td></tr>
+            <tr><td><code>tmux split-window -h -t &lt;s&gt;:&lt;w&gt;</code></td><td>Split a window horizontally</td></tr>
+            <tr><td><code>tmux split-window -v -t &lt;s&gt;:&lt;w&gt;</code></td><td>Split a window vertically</td></tr>
+            <tr><td><code>tmux send-keys -t &lt;s&gt;:&lt;w&gt;.&lt;p&gt; '...' Enter</code></td><td>Send a command to a pane</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+</main>
+
+<script>
+(function() {
+  // Close mobile nav on link click
+  var sidebar = document.getElementById('sidebar');
+  var links = sidebar.querySelectorAll('a');
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener('click', function() {
+      sidebar.classList.remove('open');
+    });
+  }
+
+  // Highlight active nav item on scroll
+  var sections = document.querySelectorAll('.lesson, .qr-section');
+  var navLinks = sidebar.querySelectorAll('.nav-list a, .sidebar-qr-link');
+
+  function setActive() {
+    var scrollY = window.scrollY + 80;
+    var current = '';
+    for (var j = 0; j < sections.length; j++) {
+      if (sections[j].offsetTop <= scrollY) {
+        current = sections[j].id;
+      }
+    }
+    for (var k = 0; k < navLinks.length; k++) {
+      navLinks[k].classList.remove('active');
+      if (navLinks[k].getAttribute('href') === '#' + current) {
+        navLinks[k].classList.add('active');
+      }
+    }
+  }
+
+  var ticking = false;
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      window.requestAnimationFrame(function() {
+        setActive();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+  setActive();
+})();
+</script>
+</body></html>

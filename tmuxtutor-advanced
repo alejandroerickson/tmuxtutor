@@ -1,0 +1,1453 @@
+#!/usr/bin/env bash
+# tmux tutor (advanced) — interactive lessons with live verification
+# Assumes you have completed tmuxtutor (basics).
+# Run in one terminal tab; do the work in another.
+set -uo pipefail
+
+# ── prereqs ──────────────────────────────────────────────────────────────────
+
+if ! command -v tmux &>/dev/null; then
+  echo
+  echo "  tmux is not installed. Install it first:"
+  echo
+  echo "    Ubuntu/Debian:  sudo apt install tmux"
+  echo "    macOS:          brew install tmux"
+  echo "    Fedora:         sudo dnf install tmux"
+  echo "    Arch:           sudo pacman -S tmux"
+  echo
+  exit 1
+fi
+
+if [ -n "${TMUX:-}" ]; then
+  echo
+  echo "  Warning: you're running this inside tmux."
+  echo "  The tutor works best from a regular terminal tab."
+  echo "  Open a new tab outside tmux and run it there."
+  echo
+  read -rp "  Continue anyway? [y/N] " yn
+  [[ "$yn" =~ ^[Yy] ]] || exit 0
+fi
+
+# ── config ───────────────────────────────────────────────────────────────────
+
+TOTAL=14
+PROGRESS_FILE="${HOME}/.tmuxtutor_advanced_progress"
+
+# ── colors ───────────────────────────────────────────────────────────────────
+
+R=$'\033[0m'
+B=$'\033[1m'
+D=$'\033[2m'
+
+C_TEXT=$'\033[38;5;252m'
+C_MUTED=$'\033[38;5;244m'
+C_ACCENT=$'\033[38;5;75m'
+C_PREFIX=$'\033[38;5;208m'
+C_OK=$'\033[38;5;71m'
+C_FAIL=$'\033[38;5;167m'
+C_TITLE=$'\033[38;5;255m'
+
+BG_KEY=$'\033[48;5;236m'
+
+if ! tput colors &>/dev/null || [ "$(tput colors 2>/dev/null || echo 0)" -lt 256 ]; then
+  R='' B='' D=''
+  C_TEXT='' C_MUTED='' C_ACCENT='' C_PREFIX='' C_OK='' C_FAIL='' C_TITLE=''
+  BG_KEY=''
+fi
+
+# ── drawing helpers ──────────────────────────────────────────────────────────
+
+COLS=$(tput cols 2>/dev/null || echo 80)
+[ "$COLS" -gt 88 ] && COLS=88
+
+hr() {
+  printf "  ${C_MUTED}${D}"
+  printf '%*s' "$((COLS - 4))" '' | tr ' ' '─'
+  printf "${R}\n"
+}
+
+cls() { clear 2>/dev/null || printf '\033[2J\033[H'; }
+
+pfx() { printf "${BG_KEY}${C_PREFIX}${B} %s ${R}" "$*"; }
+key() { printf "${BG_KEY}${C_ACCENT} %s ${R}" "$*"; }
+then_() { printf " ${C_MUTED}then${R} "; }
+cmd() { printf "  ${C_OK}\$${R} ${C_TEXT}%s${R}\n" "$*"; }
+tcmd() { printf "  ${C_OK}:${R} ${C_TEXT}%s${R}\n" "$*"; }
+conf() { printf "  ${C_TEXT}%s${R}\n" "$*"; }
+
+draw_dots() {
+  local active=$1 i
+  printf "  "
+  for ((i = 1; i <= TOTAL; i++)); do
+    if [ "$i" -lt "$active" ]; then
+      printf "${C_OK}●${R}"
+    elif [ "$i" -eq "$active" ]; then
+      printf "${C_ACCENT}◉${R}"
+    else
+      printf "${C_MUTED}○${R}"
+    fi
+    [ "$i" -lt "$TOTAL" ] && printf " "
+  done
+  printf "\n"
+}
+
+# ── lesson titles ────────────────────────────────────────────────────────────
+
+TITLES=(
+  ""
+  "Kill a Session"
+  "Switch Between Sessions"
+  "Resize Panes"
+  "Swap Panes"
+  "Pane Layouts"
+  "Move Panes Between Windows"
+  "Paste and Buffers"
+  "Help and Introspection"
+  "Edit tmux.conf"
+  "Custom Key Bindings"
+  "Synchronized Panes"
+  "Script a Workspace"
+  "SSH and tmux"
+  "Build a Dev Environment"
+)
+
+draw_header() {
+  local num=$1
+  echo
+  printf "  ${C_ACCENT}${B}tmux tutor — advanced${R}"
+  printf "%*s" "$((COLS - 39))" ""
+  printf "${C_MUTED}Lesson %d / %d${R}\n" "$num" "$TOTAL"
+  draw_dots "$num"
+  hr
+  echo
+  printf "  ${C_TITLE}${B}%s${R}\n" "${TITLES[$num]}"
+  echo
+}
+
+# ── progress ─────────────────────────────────────────────────────────────────
+
+CURRENT=0
+
+load_progress() {
+  [ -f "$PROGRESS_FILE" ] || return 0
+  local val
+  val=$(cat "$PROGRESS_FILE" 2>/dev/null) || return 0
+  if [[ "$val" =~ ^[0-9]+$ ]] && [ "$val" -le "$TOTAL" ]; then
+    CURRENT=$val
+  fi
+}
+
+save_progress() { echo "$CURRENT" > "$PROGRESS_FILE" 2>/dev/null || true; }
+
+# ── verify globals ───────────────────────────────────────────────────────────
+
+V_CMD=""
+V_OUT=""
+V_MSG=""
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 1: KILL A SESSION
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_1_show() {
+  printf "  ${C_TEXT}Sessions accumulate. Sometimes you need to ${C_ACCENT}kill${C_TEXT} one.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — Create two throwaway sessions:${R}\n"
+  echo
+  cmd "tmux new -d -s temp1"
+  cmd "tmux new -d -s temp2"
+  echo
+  printf "  ${C_MUTED}The ${C_PREFIX}-d${C_MUTED} flag creates them in the background (detached).${R}\n"
+  printf "  ${C_MUTED}Confirm they exist:${R}\n"
+  echo
+  cmd "tmux ls"
+  echo
+  printf "  ${C_TEXT}Step 2 — Kill only ${C_ACCENT}temp1${C_TEXT}:${R}\n"
+  echo
+  cmd "tmux kill-session -t temp1"
+  echo
+  printf "  ${C_MUTED}The nuclear option is ${C_TEXT}tmux kill-server${C_MUTED} — it destroys every${R}\n"
+  printf "  ${C_MUTED}session. Don't use it here; we need temp2 alive to verify.${R}\n"
+}
+
+lesson_1_verify() {
+  V_CMD="tmux has-session -t '=temp1'; tmux has-session -t '=temp2'"
+  local temp1_alive=false temp2_alive=false
+  tmux has-session -t '=temp1' 2>/dev/null && temp1_alive=true
+  tmux has-session -t '=temp2' 2>/dev/null && temp2_alive=true
+
+  if ! $temp1_alive && $temp2_alive; then
+    V_OUT=$(tmux list-sessions -F '#{session_name}' 2>/dev/null || echo "(none)")
+    V_MSG="temp1 killed, temp2 still alive!"
+    return 0
+  fi
+
+  V_OUT=$(tmux list-sessions -F '#{session_name}' 2>/dev/null || echo "(no tmux server running)")
+
+  if $temp1_alive && $temp2_alive; then
+    V_MSG="temp1 is still alive. Kill it: tmux kill-session -t temp1"
+    return 1
+  fi
+
+  if ! $temp1_alive && ! $temp2_alive; then
+    V_MSG="Both sessions are gone — only kill temp1, not the server. Recreate temp2: tmux new -d -s temp2"
+    return 1
+  fi
+
+  # temp1 alive, temp2 dead (killed the wrong one)
+  if ! $temp2_alive; then
+    V_MSG="Wrong one! temp2 is gone but temp1 is still alive. Kill temp1, recreate temp2."
+    return 1
+  fi
+
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 2: SWITCH BETWEEN SESSIONS
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_2_show() {
+  printf "  ${C_TEXT}When you have multiple sessions, you can ${C_ACCENT}switch${C_TEXT} between them${R}\n"
+  printf "  ${C_TEXT}without detaching and reattaching.${R}\n"
+  echo
+  printf "  ${C_TEXT}First, make sure you have at least 2 sessions. You should${R}\n"
+  printf "  ${C_TEXT}still have temp2 from lesson 1. Create another if needed:${R}\n"
+  echo
+  cmd "tmux new -d -s work"
+  echo
+  printf "  ${C_TEXT}Attach to one of them:${R}\n"
+  echo
+  cmd "tmux attach -t work"
+  echo
+  printf "  ${C_TEXT}Now switch between sessions using any of these:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 's')   ${C_MUTED}interactive session list${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ')')   ${C_MUTED}next session${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '(')   ${C_MUTED}previous session${R}\n"
+  echo
+  printf "  ${C_MUTED}Or open the command prompt and type:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ':')   ${C_MUTED}then${R} ${C_TEXT}switch-client -t temp2${R}\n"
+}
+
+lesson_2_verify() {
+  V_CMD="tmux list-sessions -F '#{session_name} attached=#{session_attached}'"
+  if ! tmux list-sessions &>/dev/null; then
+    V_OUT="(no tmux server running)"
+    V_MSG="No tmux server found. Create sessions first."
+    return 1
+  fi
+  local sessions
+  sessions=$(tmux list-sessions -F '#{session_name} attached=#{session_attached}' 2>/dev/null || true)
+  V_OUT="$sessions"
+  local count attached
+  count=$(echo "$sessions" | grep -c . 2>/dev/null) || count=0
+  attached=$(echo "$sessions" | grep -c 'attached=1' 2>/dev/null) || attached=0
+  if [ "$count" -ge 2 ] && [ "$attached" -ge 1 ]; then
+    V_MSG="$count sessions found, $attached attached. Ready to switch!"
+    return 0
+  fi
+  local issues=""
+  [ "$count" -lt 2 ] && issues="only $count session(s) — need at least 2"
+  [ "$attached" -lt 1 ] && issues="${issues:+$issues; }no session is attached — attach to one first"
+  V_MSG="$issues"
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 3: RESIZE PANES
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_3_show() {
+  printf "  ${C_TEXT}Time to work with pane geometry. First, set up a workspace.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — Create session \"adv\" with a named window:${R}\n"
+  echo
+  cmd "tmux new -d -s adv -n resize"
+  echo
+  printf "  ${C_TEXT}Step 2 — Split vertically (side by side):${R}\n"
+  echo
+  cmd "tmux split-window -h -t '=adv:=resize'"
+  echo
+  printf "  ${C_MUTED}Or attach and use $(pfx 'Ctrl+b')$(then_)$(key '%%')${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 3 — Attach and make the ${C_ACCENT}right pane noticeably wider${C_TEXT}:${R}\n"
+  echo
+  cmd "tmux attach -t adv"
+  echo
+  printf "  ${C_TEXT}Small steps:${R}   $(pfx 'Ctrl+b')$(then_)$(key 'Ctrl+Right')   ${C_MUTED}repeat several times${R}\n"
+  printf "  ${C_TEXT}Precise:${R}       $(pfx 'Ctrl+b')$(then_)$(key ':')   ${C_MUTED}then${R} ${C_TEXT}resize-pane -R 20${R}\n"
+  echo
+  printf "  ${C_PREFIX}Tip:${C_MUTED} The command prompt supports ${C_TEXT}Tab${C_MUTED} completion — type ${C_TEXT}resi${C_MUTED}${R}\n"
+  printf "  ${C_MUTED}then press Tab to complete ${C_TEXT}resize-pane${C_MUTED}. Works for all tmux commands.${R}\n"
+  echo
+  printf "  ${C_MUTED}Goal: the right pane (pane 1) should be wider than 55%% of the window.${R}\n"
+}
+
+lesson_3_verify() {
+  V_CMD="tmux list-panes -t '=adv:=resize' -F '#{pane_index} #{pane_width} #{window_width}'"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Create the session: tmux new -d -s adv -n resize"
+    return 1
+  fi
+  local panes
+  panes=$(tmux list-panes -t '=adv:=resize' -F '#{pane_index} #{pane_width} #{window_width}' 2>/dev/null) || {
+    V_OUT="(window 'resize' not found)"
+    V_MSG="No window named 'resize' in session 'adv'. Create it: tmux new-window -t '=adv' -n resize"
+    return 1
+  }
+  V_OUT="$panes"
+  local count
+  count=$(echo "$panes" | grep -c . 2>/dev/null) || count=0
+  if [ "$count" -lt 2 ]; then
+    V_MSG="Only $count pane(s) in 'resize'. Split it: Ctrl+b %% or tmux split-window -h -t '=adv:=resize'"
+    return 1
+  fi
+  # Check pane 1 width vs window width
+  local pane1_width window_width
+  pane1_width=$(echo "$panes" | awk '$1 == 1 { print $2 }')
+  window_width=$(echo "$panes" | head -1 | awk '{ print $3 }')
+  if [ -z "$pane1_width" ] || [ -z "$window_width" ] || [ "$window_width" -eq 0 ]; then
+    V_MSG="Could not read pane dimensions. Make sure pane 1 exists."
+    return 1
+  fi
+  local pct=$(( pane1_width * 100 / window_width ))
+  if [ "$pct" -ge 55 ]; then
+    V_MSG="Right pane is ${pct}%% of window width. Nicely resized!"
+    return 0
+  fi
+  V_MSG="Right pane is ${pct}%% of window width — need at least 55%%. Keep resizing right."
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 4: SWAP PANES
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_4_show() {
+  printf "  ${C_TEXT}You can ${C_ACCENT}swap${C_TEXT} the positions of two panes without moving${R}\n"
+  printf "  ${C_TEXT}yourself or retyping anything.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — In the \"resize\" window of session \"adv\", put some${R}\n"
+  printf "  ${C_TEXT}identifying text in each pane. Select pane 0:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'q')$(then_)$(key '0')   ${C_MUTED}flash pane numbers, then hit 0${R}\n"
+  echo
+  printf "  ${C_TEXT}Run:${R}\n"
+  echo
+  cmd "echo PANE_A"
+  echo
+  printf "  ${C_TEXT}Step 2 — Move to pane 1 and put text there:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'q')$(then_)$(key '1')   ${C_MUTED}or${R} $(pfx 'Ctrl+b')$(then_)$(key 'o')\n"
+  echo
+  cmd "echo PANE_B"
+  echo
+  printf "  ${C_TEXT}Step 3 — Swap the panes (from either pane):${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '{')   ${C_MUTED}swap current pane with the previous one${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '}')   ${C_MUTED}swap current pane with the next one${R}\n"
+  echo
+  printf "  ${C_MUTED}After swapping, pane 0 should show PANE_B and pane 1 PANE_A.${R}\n"
+}
+
+lesson_4_verify() {
+  V_CMD="tmux capture-pane -t '=adv:=resize.0' -p; tmux capture-pane -t '=adv:=resize.1' -p"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Session 'adv' is gone. Redo from lesson 3."
+    return 1
+  fi
+  local pane0 pane1
+  pane0=$(tmux capture-pane -t '=adv:=resize.0' -p 2>/dev/null) || {
+    V_OUT="(could not capture pane 0)"
+    V_MSG="Window 'resize' or pane 0 not found. Check lesson 3."
+    return 1
+  }
+  pane1=$(tmux capture-pane -t '=adv:=resize.1' -p 2>/dev/null) || {
+    V_OUT="(could not capture pane 1)"
+    V_MSG="Pane 1 not found. Make sure 'resize' has 2 panes."
+    return 1
+  }
+  local p0_has_b=false p1_has_a=false p0_has_a=false p1_has_b=false
+  echo "$pane0" | grep -q 'PANE_B' && p0_has_b=true
+  echo "$pane1" | grep -q 'PANE_A' && p1_has_a=true
+  echo "$pane0" | grep -q 'PANE_A' && p0_has_a=true
+  echo "$pane1" | grep -q 'PANE_B' && p1_has_b=true
+  V_OUT="pane 0: $(echo "$pane0" | grep -o 'PANE_[AB]' | head -1 || echo '(no marker)')  pane 1: $(echo "$pane1" | grep -o 'PANE_[AB]' | head -1 || echo '(no marker)')"
+  if $p0_has_b && $p1_has_a; then
+    V_MSG="Swapped! Pane 0 has PANE_B, pane 1 has PANE_A."
+    return 0
+  fi
+  if $p0_has_a && $p1_has_b; then
+    V_MSG="Not swapped yet. PANE_A is still in pane 0. Use Ctrl+b { or Ctrl+b } to swap."
+    return 1
+  fi
+  if ! $p0_has_a && ! $p0_has_b; then
+    V_MSG="No marker found in pane 0. Run 'echo PANE_A' in pane 0 first."
+    return 1
+  fi
+  if ! $p1_has_a && ! $p1_has_b; then
+    V_MSG="No marker found in pane 1. Run 'echo PANE_B' in pane 1 first."
+    return 1
+  fi
+  V_MSG="Unexpected state. Echo PANE_A in pane 0, PANE_B in pane 1, then swap."
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 5: PANE LAYOUTS
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_5_show() {
+  printf "  ${C_TEXT}tmux has built-in ${C_ACCENT}layout presets${C_TEXT} that rearrange all panes at once.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — Add a third pane to the \"resize\" window:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '\"')   ${C_MUTED}or${R} $(pfx 'Ctrl+b')$(then_)$(key '%%')   ${C_MUTED}split again${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 2 — Cycle through layouts:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'Space')   ${C_MUTED}press repeatedly to cycle${R}\n"
+  echo
+  printf "  ${C_TEXT}Or set a specific layout via the command prompt:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ':')   ${C_MUTED}then${R} ${C_TEXT}select-layout tiled${R}\n"
+  echo
+  printf "  ${C_MUTED}Available layouts:${R}\n"
+  printf "    ${C_ACCENT}even-horizontal${C_MUTED}   equal columns side by side${R}\n"
+  printf "    ${C_ACCENT}even-vertical${C_MUTED}     equal rows stacked${R}\n"
+  printf "    ${C_ACCENT}main-horizontal${C_MUTED}   one big pane on top, rest below${R}\n"
+  printf "    ${C_ACCENT}main-vertical${C_MUTED}     one big pane on left, rest right${R}\n"
+  printf "    ${C_ACCENT}tiled${C_MUTED}             grid — all panes roughly equal${R}\n"
+  echo
+  printf "  ${C_MUTED}Explore a few, then settle on any layout you like.${R}\n"
+}
+
+lesson_5_verify() {
+  V_CMD="tmux list-panes -t '=adv:=resize' -F '#{pane_index}: #{pane_width}x#{pane_height}'"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Session 'adv' is gone. Redo from lesson 3."
+    return 1
+  fi
+  local panes
+  panes=$(tmux list-panes -t '=adv:=resize' -F '#{pane_index}: #{pane_width}x#{pane_height}' 2>/dev/null) || {
+    V_OUT="(window 'resize' not found)"
+    V_MSG="Window 'resize' not found in session 'adv'."
+    return 1
+  }
+  V_OUT="$panes"
+  local count
+  count=$(echo "$panes" | grep -c . 2>/dev/null) || count=0
+  if [ "$count" -ge 3 ]; then
+    V_MSG="$count panes in 'resize'. Layout exploration complete!"
+    return 0
+  fi
+  V_MSG="Only $count pane(s) in 'resize' — need at least 3. Add another split."
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 6: MOVE PANES BETWEEN WINDOWS
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_6_show() {
+  printf "  ${C_TEXT}Panes can be ${C_ACCENT}broken out${C_TEXT} of a window or ${C_ACCENT}joined${C_TEXT} into another.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — Create a second window called \"staging\":${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'c')       ${C_MUTED}create a new window${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ',')       ${C_MUTED}rename it to ${C_TEXT}staging${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 2 — Go back to the \"resize\" window:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'w')       ${C_MUTED}window list — select resize${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 3 — Break the current pane into its own window:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '!')       ${C_MUTED}break-pane — pane becomes a new window${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 4 — Join that broken-out pane into \"staging\":${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ':')   ${C_MUTED}then:${R}\n"
+  echo
+  cmd "join-pane -t :staging"
+  echo
+  printf "  ${C_MUTED}This moves the current pane into the \"staging\" window.${R}\n"
+  printf "  ${C_MUTED}Result: window \"staging\" should have 2+ panes.${R}\n"
+}
+
+lesson_6_verify() {
+  V_CMD="tmux list-panes -t '=adv:=staging' -F '#{pane_index}'"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Session 'adv' is gone. Redo from lesson 3."
+    return 1
+  fi
+  local panes
+  panes=$(tmux list-panes -t '=adv:=staging' -F '#{pane_index}: #{pane_width}x#{pane_height}' 2>/dev/null) || {
+    V_OUT="(window 'staging' not found in session 'adv')"
+    V_MSG="No window named 'staging'. Create one in session 'adv': Ctrl+b c, then Ctrl+b , and type staging."
+    return 1
+  }
+  V_OUT="$panes"
+  local count
+  count=$(echo "$panes" | grep -c . 2>/dev/null) || count=0
+  if [ "$count" -ge 2 ]; then
+    V_MSG="Window 'staging' has $count panes. Pane successfully moved!"
+    return 0
+  fi
+  V_MSG="Window 'staging' has only $count pane(s) — need 2+. Break a pane from 'resize' (Ctrl+b !) then join it into 'staging'."
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSON 7: PASTE AND BUFFERS
+# ════════════════════════════════════════════════════════════════════════════
+
+lesson_7_show() {
+  printf "  ${C_TEXT}tmux maintains its own ${C_ACCENT}paste buffers${C_TEXT} — independent of the${R}\n"
+  printf "  ${C_TEXT}system clipboard. You copy text in copy mode and paste it back.${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 1 — In any pane of session \"adv\", run:${R}\n"
+  echo
+  cmd "echo ADVANCED_PASTE_TEST"
+  echo
+  printf "  ${C_TEXT}Step 2 — Enter copy mode:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '[')\n"
+  echo
+  printf "  ${C_TEXT}Step 3 — First, make sure vi keys are active:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ':')     ${C_MUTED}then type: ${C_TEXT}set -g mode-keys vi${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 4 — Re-enter copy mode and find the text:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '[')\n"
+  printf "  ${C_MUTED}  ${C_TEXT}/${C_MUTED}ADVANCED_PASTE_TEST${C_TEXT}Enter${C_MUTED}   search for it${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}Space${C_MUTED}                         start selection${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}e${C_MUTED} or ${C_TEXT}End${C_MUTED}                      extend to end of word${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}Enter${C_MUTED}                         copy and exit copy mode${R}\n"
+  echo
+  printf "  ${C_TEXT}Step 5 — Paste it:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ']')   ${C_MUTED}paste the most recent buffer${R}\n"
+  echo
+  printf "  ${C_MUTED}Useful extras:${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '=')   ${C_MUTED}choose from buffer list (multiple copies stack up)${R}\n"
+  cmd "tmux list-buffers"
+  printf "  ${C_MUTED}                   see all buffers from the command line${R}\n"
+}
+
+lesson_7_verify() {
+  V_CMD="tmux show-buffer"
+  local buf
+  buf=$(tmux show-buffer 2>/dev/null) || {
+    V_OUT="(paste buffer is empty)"
+    V_MSG="Nothing copied yet. Enter copy mode with Ctrl+b [, select ADVANCED_PASTE_TEST, press Enter."
+    return 1
+  }
+  V_OUT="$buf"
+  if echo "$buf" | grep -q "ADVANCED_PASTE_TEST"; then
+    V_MSG="Found \"ADVANCED_PASTE_TEST\" in the paste buffer!"
+    return 0
+  fi
+  V_MSG="Buffer has text, but not \"ADVANCED_PASTE_TEST\". Select that exact text in copy mode."
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# LESSONS 8-14
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── LESSON 8: Help and Introspection ───────────────────────────────────────
+
+lesson_8_show() {
+  printf "  ${C_TEXT}tmux has a built-in help system. You can browse every${R}\n"
+  printf "  ${C_TEXT}keybinding, query options, and inspect the running server.${R}\n"
+  echo
+  printf "  ${C_TEXT}Inside the \"adv\" session, try these:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '?')     ${C_MUTED}list all keybindings (browse with arrows, q to exit)${R}\n"
+  echo
+  cmd "tmux list-keys"
+  printf "  ${C_MUTED}  Same list, printed to your shell (easier to grep)${R}\n"
+  echo
+  cmd "tmux show-options -g"
+  printf "  ${C_MUTED}  Show all global options and their current values${R}\n"
+  echo
+  cmd "tmux info"
+  printf "  ${C_MUTED}  Detailed server info: terminal features, version, etc.${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}Exercise:${R}\n"
+  echo
+  printf "  ${C_TEXT}First, make sure session \"adv\" has at least 2 windows:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'c')     ${C_MUTED}create a window (repeat if needed)${R}\n"
+  echo
+  printf "  ${C_TEXT}Now press $(pfx 'Ctrl+b')$(then_)$(key '?') and look for the binding that${R}\n"
+  printf "  ${C_TEXT}runs ${C_ACCENT}last-window${C_TEXT}. Find it, press ${C_ACCENT}q${C_TEXT} to exit help, then${R}\n"
+  printf "  ${C_TEXT}use the binding:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key 'l')     ${C_MUTED}switch to the last-used window${R}\n"
+  echo
+  printf "  ${C_MUTED}This is an explore-and-learn lesson. Verification only checks${R}\n"
+  printf "  ${C_MUTED}that your \"adv\" session has 2+ windows (the prerequisite).${R}\n"
+}
+
+lesson_8_verify() {
+  V_CMD="tmux list-windows -t '=adv' -F '#{window_index}:#{window_name}'"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Session gone. Run: tmux new -s adv"
+    return 1
+  fi
+  local wins
+  wins=$(tmux list-windows -t '=adv' -F '#{window_index}:#{window_name}' 2>/dev/null || true)
+  V_OUT="$wins"
+  local count
+  count=$(echo "$wins" | grep -c . 2>/dev/null) || count=0
+  if [ "$count" -ge 2 ]; then
+    V_MSG="$count windows in \"adv\". You can explore help with Ctrl+b ? anytime."
+    return 0
+  fi
+  V_MSG="Only $count window in \"adv\". Press Ctrl+b c to create at least one more."
+  return 1
+}
+
+# ── LESSON 9: Edit tmux.conf ──────────────────────────────────────────────
+
+lesson_9_show() {
+  printf "  ${C_TEXT}Runtime settings vanish when the server exits. To make them${R}\n"
+  printf "  ${C_TEXT}permanent, put them in ${C_ACCENT}~/.tmux.conf${C_TEXT}.${R}\n"
+  echo
+  printf "  ${C_PREFIX}Note:${C_MUTED} If you already have a ~/.tmux.conf, back it up first:${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}cp ~/.tmux.conf ~/.tmux.conf.bak${R}\n"
+  echo
+  printf "  ${C_TEXT}Create or edit ${C_ACCENT}~/.tmux.conf${C_TEXT} with your favorite editor. Add:${R}\n"
+  echo
+  conf "set -g mouse on"
+  conf "set -g mode-keys vi"
+  conf "set -g history-limit 50000"
+  conf "set -g base-index 1"
+  conf "set -g status-style 'bg=colour235 fg=colour75'"
+  echo
+  printf "  ${C_MUTED}Quick way to create it from the shell:${R}\n"
+  echo
+  printf "  ${C_OK}\$${R} ${C_TEXT}cat > ~/.tmux.conf << 'EOF'${R}\n"
+  printf "  ${C_TEXT}set -g mouse on${R}\n"
+  printf "  ${C_TEXT}set -g mode-keys vi${R}\n"
+  printf "  ${C_TEXT}set -g history-limit 50000${R}\n"
+  printf "  ${C_TEXT}set -g base-index 1${R}\n"
+  printf "  ${C_TEXT}set -g status-style 'bg=colour235 fg=colour75'${R}\n"
+  printf "  ${C_TEXT}EOF${R}\n"
+  echo
+  printf "  ${C_TEXT}Then reload it inside tmux:${R}\n"
+  echo
+  cmd "tmux source-file ~/.tmux.conf"
+  echo
+  printf "  ${C_MUTED}Or from the tmux command prompt: $(pfx 'Ctrl+b')$(then_)$(key ':')${R}\n"
+  printf "  ${C_MUTED}then type ${C_TEXT}source-file ~/.tmux.conf${R}\n"
+}
+
+lesson_9_verify() {
+  V_CMD="grep -E 'mouse|mode-keys|history-limit' ~/.tmux.conf"
+  if [ ! -f "${HOME}/.tmux.conf" ]; then
+    V_OUT="(~/.tmux.conf does not exist)"
+    V_MSG="Create ~/.tmux.conf with the settings shown in the lesson."
+    return 1
+  fi
+  local issues=""
+  local found=""
+
+  if grep -q 'mouse on' "${HOME}/.tmux.conf" 2>/dev/null; then
+    found="${found}mouse on, "
+  else
+    issues="${issues}missing 'mouse on'; "
+  fi
+
+  if grep -q 'mode-keys vi' "${HOME}/.tmux.conf" 2>/dev/null; then
+    found="${found}mode-keys vi, "
+  else
+    issues="${issues}missing 'mode-keys vi'; "
+  fi
+
+  if grep -q 'history-limit' "${HOME}/.tmux.conf" 2>/dev/null; then
+    found="${found}history-limit, "
+  else
+    issues="${issues}missing 'history-limit'; "
+  fi
+
+  V_OUT="found in file: ${found%,*}"
+
+  if tmux list-sessions &>/dev/null; then
+    local mouse_val hist_val
+    mouse_val=$(tmux show-options -gv mouse 2>/dev/null || echo "off")
+    hist_val=$(tmux show-options -gv history-limit 2>/dev/null || echo "0")
+    V_OUT="${V_OUT}
+live: mouse=$mouse_val  history-limit=$hist_val"
+
+    if [ "$mouse_val" != "on" ]; then
+      issues="${issues}mouse not active (reload config: tmux source-file ~/.tmux.conf); "
+    fi
+    if [ "$hist_val" -lt 50000 ] 2>/dev/null; then
+      issues="${issues}history-limit is $hist_val (need >= 50000, reload config); "
+    fi
+  fi
+
+  if [ -z "$issues" ]; then
+    V_MSG="Config file and live settings look good!"
+    return 0
+  fi
+  V_MSG="${issues%;*}"
+  return 1
+}
+
+# ── LESSON 10: Custom Key Bindings ────────────────────────────────────────
+
+lesson_10_show() {
+  printf "  ${C_TEXT}The default split keys ${C_ACCENT}%%${C_TEXT} and ${C_ACCENT}\"${C_TEXT} are hard to remember.${R}\n"
+  printf "  ${C_TEXT}You can bind more intuitive keys.${R}\n"
+  echo
+  printf "  ${C_TEXT}Add these lines to ${C_ACCENT}~/.tmux.conf${C_TEXT}:${R}\n"
+  echo
+  conf "bind | split-window -h -c \"#{pane_current_path}\""
+  conf "bind - split-window -v -c \"#{pane_current_path}\""
+  echo
+  printf "  ${C_MUTED}${C_ACCENT}|${C_MUTED} looks like a vertical divider   (side by side)${R}\n"
+  printf "  ${C_MUTED}${C_ACCENT}-${C_MUTED} looks like a horizontal divider  (stacked)${R}\n"
+  printf "  ${C_MUTED}${C_ACCENT}-c \"#{pane_current_path}\"${C_MUTED} opens the new pane in the same directory${R}\n"
+  echo
+  printf "  ${C_TEXT}Reload the config:${R}\n"
+  echo
+  cmd "tmux source-file ~/.tmux.conf"
+  echo
+  printf "  ${C_TEXT}Now try the new bindings:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '|')     ${C_MUTED}split side by side${R}\n"
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '-')     ${C_MUTED}split stacked${R}\n"
+  echo
+  printf "  ${C_MUTED}Verification checks that both bindings exist in your config${R}\n"
+  printf "  ${C_MUTED}and are loaded into the running tmux server.${R}\n"
+}
+
+lesson_10_verify() {
+  V_CMD="grep 'split-window' ~/.tmux.conf; tmux list-keys -T prefix | grep split-window"
+  if [ ! -f "${HOME}/.tmux.conf" ]; then
+    V_OUT="(~/.tmux.conf does not exist)"
+    V_MSG="Create ~/.tmux.conf with the custom bindings."
+    return 1
+  fi
+  local issues=""
+  local detail=""
+
+  if grep -q 'bind.*|.*split-window' "${HOME}/.tmux.conf" 2>/dev/null; then
+    detail="${detail}config: | binding found\n"
+  else
+    issues="${issues}missing 'bind | split-window ...' in ~/.tmux.conf; "
+  fi
+
+  if grep -q 'bind.*-.*split-window.*-v' "${HOME}/.tmux.conf" 2>/dev/null; then
+    detail="${detail}config: - binding found\n"
+  else
+    issues="${issues}missing 'bind - split-window -v ...' in ~/.tmux.conf; "
+  fi
+
+  if tmux list-sessions &>/dev/null; then
+    local keys
+    keys=$(tmux list-keys -T prefix 2>/dev/null || true)
+
+    if echo "$keys" | grep -q '^bind-key.*prefix |.*split-window' 2>/dev/null; then
+      detail="${detail}live: | → split-window loaded\n"
+    else
+      issues="${issues}| binding not loaded (run: tmux source-file ~/.tmux.conf); "
+    fi
+
+    if echo "$keys" | grep -q '^bind-key.*prefix -.*split-window' 2>/dev/null; then
+      detail="${detail}live: - → split-window loaded\n"
+    else
+      issues="${issues}- binding not loaded (run: tmux source-file ~/.tmux.conf); "
+    fi
+  fi
+
+  V_OUT=$(printf "%b" "$detail")
+
+  if [ -z "$issues" ]; then
+    V_MSG="Custom split bindings configured and active!"
+    return 0
+  fi
+  V_MSG="${issues%;*}"
+  return 1
+}
+
+# ── LESSON 11: Synchronized Panes ─────────────────────────────────────────
+
+lesson_11_show() {
+  printf "  ${C_TEXT}Sometimes you want to type the same command into multiple${R}\n"
+  printf "  ${C_TEXT}panes at once, for example updating several servers.${R}\n"
+  printf "  ${C_TEXT}tmux can ${C_ACCENT}synchronize${C_TEXT} input across all panes in a window.${R}\n"
+  echo
+  printf "  ${C_TEXT}First, make sure the current window in \"adv\" has 2+ panes:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key '%%')    ${C_MUTED}or $(pfx 'Ctrl+b')$(then_)$(key '\"') to split${R}\n"
+  echo
+  printf "  ${C_TEXT}Turn on synchronized panes:${R}\n"
+  echo
+  printf "  $(pfx 'Ctrl+b')$(then_)$(key ':')     ${C_MUTED}open the command prompt${R}\n"
+  printf "  ${C_MUTED}  type: ${C_TEXT}setw synchronize-panes on${R}\n"
+  echo
+  printf "  ${C_TEXT}Now type anything, it appears in ${C_ACCENT}every pane${C_TEXT} simultaneously.${R}\n"
+  printf "  ${C_TEXT}Try it:${R}\n"
+  echo
+  cmd "echo SYNC_TEST"
+  echo
+  printf "  ${C_MUTED}Leave sync ${C_TEXT}on${C_MUTED} for verification. Afterwards, turn it off:${R}\n"
+  printf "  ${C_MUTED}  $(pfx 'Ctrl+b')$(then_)$(key ':') then ${C_TEXT}setw synchronize-panes off${R}\n"
+}
+
+lesson_11_verify() {
+  V_CMD="tmux show-window-options -t '=adv' -v synchronize-panes"
+  if ! tmux has-session -t '=adv' 2>/dev/null; then
+    V_OUT="(session 'adv' not found)"
+    V_MSG="Session gone. Run: tmux new -s adv"
+    return 1
+  fi
+  local panes
+  panes=$(tmux list-panes -t '=adv' -F '#{pane_index}' 2>/dev/null || true)
+  local pane_count
+  pane_count=$(echo "$panes" | grep -c . 2>/dev/null) || pane_count=0
+
+  if [ "$pane_count" -lt 2 ]; then
+    V_OUT="panes: $pane_count"
+    V_MSG="Current window has only $pane_count pane. Split first with Ctrl+b % or Ctrl+b \"."
+    return 1
+  fi
+
+  local sync_val
+  sync_val=$(tmux show-window-options -t '=adv' -v synchronize-panes 2>/dev/null || echo "")
+  V_OUT="synchronize-panes=$sync_val  panes=$pane_count"
+
+  if [ "$sync_val" = "on" ]; then
+    V_MSG="Sync is on across $pane_count panes! Turn it off when done: setw synchronize-panes off"
+    return 0
+  fi
+  V_MSG="Sync is not on. Press Ctrl+b : then type: setw synchronize-panes on"
+  return 1
+}
+
+# ── LESSON 12: Script a Workspace ─────────────────────────────────────────
+
+lesson_12_show() {
+  printf "  ${C_TEXT}tmux's real power is ${C_ACCENT}scripting${C_TEXT}. Every command you've used${R}\n"
+  printf "  ${C_TEXT}interactively can be run from a shell script to build a${R}\n"
+  printf "  ${C_TEXT}workspace automatically.${R}\n"
+  echo
+  printf "  ${C_TEXT}Key concepts:${R}\n"
+  echo
+  printf "  ${C_ACCENT}-d${C_MUTED}                   create detached (don't attach immediately)${R}\n"
+  printf "  ${C_ACCENT}-t session:window${C_MUTED}    target a specific window${R}\n"
+  printf "  ${C_ACCENT}-t session:window.pane${C_MUTED}  target a specific pane${R}\n"
+  printf "  ${C_ACCENT}send-keys ... Enter${C_MUTED}  type a command into a pane${R}\n"
+  echo
+  printf "  ${C_TEXT}Run these commands in your regular shell (not inside tmux):${R}\n"
+  echo
+  cmd "tmux new-session -d -s dev -n editor"
+  cmd "tmux split-window -h -t dev:editor"
+  cmd "tmux new-window -t dev -n logs"
+  cmd "tmux send-keys -t dev:editor.0 'echo EDITOR_READY' Enter"
+  cmd "tmux send-keys -t dev:logs 'echo LOGS_READY' Enter"
+  echo
+  printf "  ${C_MUTED}This creates session \"dev\" with:${R}\n"
+  printf "  ${C_MUTED}  - window \"editor\" (2 panes side by side)${R}\n"
+  printf "  ${C_MUTED}  - window \"logs\"${R}\n"
+  printf "  ${C_MUTED}  - marker text sent to each so we can verify${R}\n"
+  echo
+  printf "  ${C_TEXT}Attach to see it:${R}\n"
+  echo
+  cmd "tmux attach -t dev"
+}
+
+lesson_12_verify() {
+  V_CMD="tmux list-windows -t '=dev' -F '#{window_name}: #{window_panes} pane(s)'"
+  if ! tmux has-session -t '=dev' 2>/dev/null; then
+    V_OUT="(session 'dev' not found)"
+    V_MSG="Create session 'dev' with the scripted commands."
+    return 1
+  fi
+  local raw
+  raw=$(tmux list-windows -t '=dev' -F $'#{window_name}\t#{window_panes}' 2>/dev/null || true)
+  V_OUT=$(tmux list-windows -t '=dev' -F '#{window_name}: #{window_panes} pane(s)' 2>/dev/null || true)
+
+  local has_editor=false editor_panes=0 has_logs=false
+  local wname wpanes
+  while IFS=$'\t' read -r wname wpanes; do
+    [ -z "$wname" ] && continue
+    [ "$wname" = "editor" ] && { has_editor=true; editor_panes=$wpanes; }
+    [ "$wname" = "logs" ] && has_logs=true
+  done <<< "$raw"
+
+  local issues=""
+  $has_editor || issues="missing 'editor' window; "
+  $has_logs   || issues="${issues}missing 'logs' window; "
+  if $has_editor && [ "$editor_panes" -lt 2 ]; then
+    issues="${issues}'editor' has $editor_panes pane(s), need 2+; "
+  fi
+
+  if $has_editor; then
+    local editor_buf
+    editor_buf=$(tmux capture-pane -t '=dev:=editor.0' -p 2>/dev/null || true)
+    if echo "$editor_buf" | grep -q 'EDITOR_READY'; then
+      V_OUT="${V_OUT}
+editor.0: EDITOR_READY found"
+    else
+      issues="${issues}'EDITOR_READY' not found in editor pane 0; "
+    fi
+  fi
+
+  if $has_logs; then
+    local logs_buf
+    logs_buf=$(tmux capture-pane -t '=dev:=logs' -p 2>/dev/null || true)
+    if echo "$logs_buf" | grep -q 'LOGS_READY'; then
+      V_OUT="${V_OUT}
+logs: LOGS_READY found"
+    else
+      issues="${issues}'LOGS_READY' not found in logs window; "
+    fi
+  fi
+
+  if [ -z "$issues" ]; then
+    V_MSG="Scripted workspace looks perfect!"
+    return 0
+  fi
+  V_MSG="${issues%;*}"
+  return 1
+}
+
+# ── LESSON 13: The SSH Workflow ───────────────────────────────────────────
+
+lesson_13_show() {
+  printf "  ${C_TEXT}This is tmux's ${C_ACCENT}killer feature${C_TEXT}: persistence across disconnects.${R}\n"
+  printf "  ${C_TEXT}You will SSH into this machine and attach to a running tmux session.${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}Step 1 — Start the SSH server${R}\n"
+  echo
+  printf "  ${C_TEXT}Install and start the SSH server for your platform:${R}\n"
+  echo
+  printf "  ${C_ACCENT}Ubuntu/Debian:${R}\n"
+  cmd "sudo apt install openssh-server"
+  cmd "sudo systemctl enable ssh && sudo systemctl start ssh"
+  echo
+  printf "  ${C_ACCENT}Fedora:${R}\n"
+  cmd "sudo dnf install openssh-server"
+  cmd "sudo systemctl enable sshd && sudo systemctl start sshd"
+  echo
+  printf "  ${C_ACCENT}Arch:${R}\n"
+  cmd "sudo pacman -S openssh"
+  cmd "sudo systemctl enable sshd && sudo systemctl start sshd"
+  echo
+  printf "  ${C_ACCENT}macOS:${R}\n"
+  printf "  ${C_MUTED}Enable via System Settings → General → Sharing → Remote Login${R}\n"
+  printf "  ${C_MUTED}Or from the terminal:${R}\n"
+  cmd "sudo systemsetup -setremotelogin on"
+  echo
+  printf "  ${C_TEXT}${B}Step 2 — Create a tmux session to find later${R}\n"
+  echo
+  cmd "tmux new -d -s remote"
+  cmd "tmux send-keys -t remote 'echo SSH_WORKFLOW_TEST' Enter"
+  echo
+  printf "  ${C_TEXT}${B}Step 3 — Find your IP address${R}\n"
+  echo
+  cmd "hostname -I"
+  echo
+  printf "  ${C_MUTED}Use the first address printed as ${C_TEXT}<ip>${C_MUTED} in the next step.${R}\n"
+  echo
+  printf "  ${C_TEXT}${B}Step 4 — SSH in from another device${R}\n"
+  echo
+  printf "  ${C_TEXT}From your phone, laptop, or another terminal:${R}\n"
+  echo
+  cmd "ssh <user>@<ip>"
+  echo
+  printf "  ${C_TEXT}${B}Step 5 — Attach to the tmux session over SSH${R}\n"
+  echo
+  printf "  ${C_TEXT}Once connected via SSH, run:${R}\n"
+  echo
+  cmd "tmux attach -t remote"
+  echo
+  printf "  ${C_MUTED}Or use the attach-or-create shorthand:${R}\n"
+  cmd "tmux new -A -s remote"
+  echo
+  printf "  ${C_TEXT}You should see ${C_ACCENT}SSH_WORKFLOW_TEST${C_TEXT} in the pane — proof that the${R}\n"
+  printf "  ${C_TEXT}session survived across connections.${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}For access over the internet (WAN):${R}\n"
+  echo
+  printf "  ${C_MUTED}Option A: Forward port 22 on your router to this machine's IP.${R}\n"
+  printf "  ${C_MUTED}Option B: Use ${C_TEXT}Tailscale${C_MUTED} (free) for a private tunnel — no port${R}\n"
+  printf "  ${C_MUTED}forwarding needed. Install on both machines, then:${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}ssh <user>@<tailscale-ip>${R}\n"
+  echo
+  printf "  ${C_PREFIX}Security:${C_MUTED} Consider using SSH keys instead of passwords:${R}\n"
+  printf "  ${C_MUTED}  ${C_TEXT}ssh-keygen${C_MUTED} on the client, ${C_TEXT}ssh-copy-id <user>@<ip>${C_MUTED} to install.${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}Troubleshooting${R}\n"
+  echo
+  printf "  ${C_PREFIX}\"Connection refused\" on port 22${R}\n"
+  printf "  ${C_MUTED}sshd is not running. Check its status:${R}\n"
+  echo
+  cmd "sudo systemctl status ssh"
+  echo
+  printf "  ${C_MUTED}If it says \"not found\", install it first:${R}\n"
+  echo
+  cmd "sudo apt install openssh-server"
+  echo
+  printf "  ${C_MUTED}Then start it:${R}\n"
+  echo
+  cmd "sudo systemctl start ssh"
+  echo
+  printf "  ${C_PREFIX}Verify sshd is listening${R}\n"
+  printf "  ${C_MUTED}You should see a line with ${C_TEXT}*:22${C_MUTED} or ${C_TEXT}0.0.0.0:22${C_MUTED}:${R}\n"
+  echo
+  cmd "ss -tlnp | grep :22"
+  echo
+  printf "  ${C_PREFIX}WSL2 networking${R}\n"
+  printf "  ${C_MUTED}The IP from ${C_TEXT}hostname -I${C_MUTED} is the WSL2 VM's internal IP.${R}\n"
+  printf "  ${C_MUTED}It is reachable from the Windows host, but other LAN devices${R}\n"
+  printf "  ${C_MUTED}cannot reach it without port forwarding from Windows to WSL2.${R}\n"
+  printf "  ${C_MUTED}For localhost SSH (from another Windows terminal into WSL):${R}\n"
+  echo
+  cmd "ssh <user>@localhost"
+  echo
+  printf "  ${C_PREFIX}Password authentication${R}\n"
+  printf "  ${C_MUTED}SSH needs your Linux password. If you have never set one${R}\n"
+  printf "  ${C_MUTED}(common on WSL2), set it now:${R}\n"
+  echo
+  cmd "sudo passwd <user>"
+}
+
+lesson_13_verify() {
+  V_CMD="systemctl is-active ssh; tmux has-session -t '=remote'"
+  local issues=""
+  local detail=""
+
+  # Check SSH server
+  local ssh_status
+  ssh_status=$(systemctl is-active ssh 2>/dev/null || echo "inactive")
+  if [ "$ssh_status" = "active" ]; then
+    detail="sshd: running\n"
+  else
+    # fallback for systems without systemd
+    if pgrep -x sshd &>/dev/null; then
+      detail="sshd: running (detected via pgrep)\n"
+    else
+      issues="${issues}SSH server not running (sudo systemctl start ssh); "
+    fi
+  fi
+
+  # Check tmux session exists
+  if ! tmux has-session -t '=remote' 2>/dev/null; then
+    issues="${issues}session 'remote' not found (tmux new -d -s remote); "
+    V_OUT=$(printf "%b" "$detail")
+    V_MSG="${issues%;*}"
+    return 1
+  fi
+  detail="${detail}session: remote exists\n"
+
+  # Check marker text
+  local buf
+  buf=$(tmux capture-pane -t 'remote' -p 2>/dev/null || true)
+  if echo "$buf" | grep -q 'SSH_WORKFLOW_TEST'; then
+    detail="${detail}marker: SSH_WORKFLOW_TEST found\n"
+  else
+    issues="${issues}SSH_WORKFLOW_TEST not found in session (tmux send-keys -t remote 'echo SSH_WORKFLOW_TEST' Enter); "
+  fi
+
+  # Check if session is attached (someone SSH'd in and attached)
+  local info
+  info=$(tmux list-sessions -F '#{session_name} attached=#{session_attached}' 2>/dev/null | grep '^remote ' || true)
+  detail="${detail}${info}\n"
+  if echo "$info" | grep -q 'attached=0'; then
+    issues="${issues}session is detached — SSH in and run: tmux attach -t remote; "
+  fi
+
+  V_OUT=$(printf "%b" "$detail")
+
+  if [ -z "$issues" ]; then
+    V_MSG="SSH server running, session attached over SSH. The real deal!"
+    return 0
+  fi
+  V_MSG="${issues%;*}"
+  return 1
+}
+
+# ── LESSON 14: Build a Dev Environment (Capstone) ─────────────────────────
+
+lesson_14_show() {
+  printf "  ${C_TEXT}Put everything together. Build a ${C_ACCENT}multi-session${C_TEXT} dev environment${R}\n"
+  printf "  ${C_TEXT}from scratch using scripted commands.${R}\n"
+  echo
+  printf "  ${C_TEXT}Run these in your regular shell:${R}\n"
+  echo
+  printf "  ${C_MUTED}--- backend session ---${R}\n"
+  echo
+  cmd "tmux new-session -d -s backend -n api"
+  cmd "tmux split-window -h -t backend:api"
+  cmd "tmux new-window -t backend -n db"
+  echo
+  printf "  ${C_MUTED}--- frontend session ---${R}\n"
+  echo
+  cmd "tmux new-session -d -s frontend -n app"
+  cmd "tmux split-window -h -t frontend:app"
+  cmd "tmux new-window -t frontend -n tests"
+  echo
+  printf "  ${C_MUTED}--- send markers ---${R}\n"
+  echo
+  cmd "tmux send-keys -t backend:api.0 'echo BACKEND_API' Enter"
+  cmd "tmux send-keys -t frontend:app.0 'echo FRONTEND_APP' Enter"
+  echo
+  printf "  ${C_TEXT}Attach and explore:${R}\n"
+  echo
+  cmd "tmux attach -t backend"
+  echo
+  printf "  ${C_TEXT}Switch sessions:${R}  $(pfx 'Ctrl+b')$(then_)$(key 's')   ${C_MUTED}then select \"frontend\"${R}\n"
+  echo
+  printf "  ${C_MUTED}You now have two sessions, each with multiple windows and panes,${R}\n"
+  printf "  ${C_MUTED}ready for full-stack development. Imagine scripting this into a${R}\n"
+  printf "  ${C_MUTED}single ${C_TEXT}dev-start.sh${C_MUTED} you run every morning.${R}\n"
+}
+
+lesson_14_verify() {
+  V_CMD="tmux list-sessions; tmux list-windows -t '=backend'; tmux list-windows -t '=frontend'"
+  local issues=""
+  local detail=""
+
+  if ! tmux has-session -t '=backend' 2>/dev/null; then
+    issues="${issues}missing session 'backend'; "
+  else
+    local be_raw
+    be_raw=$(tmux list-windows -t '=backend' -F $'#{window_name}\t#{window_panes}' 2>/dev/null || true)
+    detail="${detail}backend:\n"
+
+    local has_api=false api_panes=0 has_db=false
+    local wname wpanes
+    while IFS=$'\t' read -r wname wpanes; do
+      [ -z "$wname" ] && continue
+      detail="${detail}  $wname: $wpanes pane(s)\n"
+      [ "$wname" = "api" ]  && { has_api=true; api_panes=$wpanes; }
+      [ "$wname" = "db" ]   && has_db=true
+    done <<< "$be_raw"
+
+    $has_api || issues="${issues}backend missing 'api' window; "
+    $has_db  || issues="${issues}backend missing 'db' window; "
+    if $has_api && [ "$api_panes" -lt 2 ]; then
+      issues="${issues}backend:api has $api_panes pane(s), need 2+; "
+    fi
+
+    if $has_api; then
+      local api_buf
+      api_buf=$(tmux capture-pane -t '=backend:=api.0' -p 2>/dev/null || true)
+      if echo "$api_buf" | grep -q 'BACKEND_API'; then
+        detail="${detail}  api.0: BACKEND_API found\n"
+      else
+        issues="${issues}BACKEND_API not found in backend:api.0; "
+      fi
+    fi
+  fi
+
+  if ! tmux has-session -t '=frontend' 2>/dev/null; then
+    issues="${issues}missing session 'frontend'; "
+  else
+    local fe_raw
+    fe_raw=$(tmux list-windows -t '=frontend' -F $'#{window_name}\t#{window_panes}' 2>/dev/null || true)
+    detail="${detail}frontend:\n"
+
+    local has_app=false app_panes=0 has_tests=false
+    local wname wpanes
+    while IFS=$'\t' read -r wname wpanes; do
+      [ -z "$wname" ] && continue
+      detail="${detail}  $wname: $wpanes pane(s)\n"
+      [ "$wname" = "app" ]   && { has_app=true; app_panes=$wpanes; }
+      [ "$wname" = "tests" ] && has_tests=true
+    done <<< "$fe_raw"
+
+    $has_app   || issues="${issues}frontend missing 'app' window; "
+    $has_tests || issues="${issues}frontend missing 'tests' window; "
+    if $has_app && [ "$app_panes" -lt 2 ]; then
+      issues="${issues}frontend:app has $app_panes pane(s), need 2+; "
+    fi
+
+    if $has_app; then
+      local app_buf
+      app_buf=$(tmux capture-pane -t '=frontend:=app.0' -p 2>/dev/null || true)
+      if echo "$app_buf" | grep -q 'FRONTEND_APP'; then
+        detail="${detail}  app.0: FRONTEND_APP found\n"
+      else
+        issues="${issues}FRONTEND_APP not found in frontend:app.0; "
+      fi
+    fi
+  fi
+
+  V_OUT=$(printf "%b" "$detail")
+
+  if [ -z "$issues" ]; then
+    V_MSG="Multi-session dev environment is perfect!"
+    return 0
+  fi
+  V_MSG="${issues%;*}"
+  return 1
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# DISPLAY ENGINE
+# ════════════════════════════════════════════════════════════════════════════
+
+show_lesson() {
+  local num=$1
+  cls
+  draw_header "$num"
+  "lesson_${num}_show"
+  echo
+  hr
+  if [ "$num" -gt 1 ]; then
+    printf "\n  ${C_MUTED}[${C_ACCENT}v${C_MUTED}] verify  [${C_TEXT}b${C_MUTED}] back  [${C_TEXT}s${C_MUTED}] skip  [${C_TEXT}q${C_MUTED}] quit${R}  "
+  else
+    printf "\n  ${C_MUTED}[${C_ACCENT}v${C_MUTED}] verify  [${C_TEXT}s${C_MUTED}] skip  [${C_TEXT}q${C_MUTED}] quit${R}  "
+  fi
+  printf '\033[H'
+}
+
+show_verify() {
+  local passed=$1
+  echo
+  echo
+  if [ "$passed" -eq 0 ]; then
+    printf "  ${C_OK}${B}✓ PASSED${R}\n"
+  else
+    printf "  ${C_FAIL}${B}✗ NOT YET${R}\n"
+  fi
+  echo
+  printf "  ${C_MUTED}\$ %s${R}\n" "$V_CMD"
+  if [ -n "$V_OUT" ]; then
+    while IFS= read -r line; do
+      printf "  ${C_TEXT}  %s${R}\n" "$line"
+    done <<< "$V_OUT"
+  fi
+  echo
+  printf "  ${C_TEXT}%s${R}\n" "$V_MSG"
+}
+
+run_lesson() {
+  local num=$1
+  show_lesson "$num"
+
+  while true; do
+    local action
+    read -rsn1 action || true
+    case "${action:-}" in
+      v|V)
+        cls
+        draw_header "$num"
+        echo
+        printf "  ${C_MUTED}Verifying...${R}"
+        sleep 0.3 2>/dev/null || true
+        if "lesson_${num}_verify"; then
+          show_verify 0
+          echo
+          hr
+          printf "\n  ${C_MUTED}Press any key to continue...${R}"
+          read -rsn1 || true
+          return 0
+        else
+          show_verify 1
+          echo
+          hr
+          if [ "$num" -gt 1 ]; then
+            printf "\n  ${C_MUTED}[${C_ACCENT}v${C_MUTED}] try again  [${C_TEXT}b${C_MUTED}] back  [${C_TEXT}r${C_MUTED}] review lesson  [${C_TEXT}s${C_MUTED}] skip  [${C_TEXT}q${C_MUTED}] quit${R}  "
+          else
+            printf "\n  ${C_MUTED}[${C_ACCENT}v${C_MUTED}] try again  [${C_TEXT}r${C_MUTED}] review lesson  [${C_TEXT}s${C_MUTED}] skip  [${C_TEXT}q${C_MUTED}] quit${R}  "
+          fi
+        fi
+        ;;
+      b|B)
+        if [ "$num" -gt 1 ]; then
+          return 2
+        fi
+        ;;
+      r|R)
+        show_lesson "$num"
+        ;;
+      s|S)
+        return 0
+        ;;
+      q|Q)
+        save_progress
+        echo
+        printf "\n\n  ${C_MUTED}Progress saved at lesson %d. Run ${C_ACCENT}$(basename "$0")${C_MUTED} to continue.${R}\n\n" "$num"
+        exit 0
+        ;;
+    esac
+  done
+}
+
+# ── intro ────────────────────────────────────────────────────────────────────
+
+show_intro() {
+  cls
+  echo
+  printf "  ${C_ACCENT}${B}tmux tutor — advanced${R}\n"
+  printf "  ${C_MUTED}Interactive lessons with live verification${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}Prerequisites:${R}\n"
+  echo
+  printf "  ${C_TEXT}This module assumes you have completed the ${C_ACCENT}basic tmux tutor${C_TEXT}.${R}\n"
+  printf "  ${C_TEXT}You should already be comfortable with sessions, windows, panes,${R}\n"
+  printf "  ${C_TEXT}copy mode, and runtime configuration.${R}\n"
+  echo
+  printf "  ${C_TEXT}${B}How this works:${R}\n"
+  echo
+  printf "  ${C_TEXT}Keep this tab open (the tutor). Open a second tab (your workspace).${R}\n"
+  printf "  ${C_TEXT}Follow the lessons here, do the tmux commands there. Come back${R}\n"
+  printf "  ${C_TEXT}and press ${C_ACCENT}[v]${C_TEXT} to verify your work.${R}\n"
+  echo
+  printf "  ${C_MUTED}%d lessons covering session management, pane choreography, buffers,${R}\n" "$TOTAL"
+  printf "  ${C_MUTED}configuration files, scripting, and real-world workflows.${R}\n"
+  echo
+  if tmux has-session -t '=adv' 2>/dev/null || tmux has-session -t '=temp1' 2>/dev/null || tmux has-session -t '=temp2' 2>/dev/null; then
+    printf "  ${C_PREFIX}Note:${C_MUTED} Sessions from a previous run detected.${R}\n"
+    printf "  ${C_MUTED}To start fresh: ${C_TEXT}tmux kill-session -t adv${C_MUTED}, etc.${R}\n"
+    echo
+  fi
+  hr
+  printf "\n  ${C_MUTED}Press any key to start...${R}"
+  read -rsn1 || true
+}
+
+# ── completion ───────────────────────────────────────────────────────────────
+
+show_completion() {
+  cls
+  echo
+  echo
+  printf "  ${C_OK}${B}"
+  printf '%*s' "$((COLS - 4))" '' | tr ' ' '='
+  printf "${R}\n"
+  echo
+  printf "  ${C_OK}${B}  Congratulations!  ${R}\n"
+  echo
+  printf "  ${C_OK}${B}"
+  printf '%*s' "$((COLS - 4))" '' | tr ' ' '='
+  printf "${R}\n"
+  echo
+  echo
+  printf "  ${C_TEXT}You completed all %d lessons of ${C_ACCENT}tmux advanced${C_TEXT}.${R}\n" "$TOTAL"
+  printf "  ${C_TEXT}That's ${C_OK}${B}28 lessons${R}${C_TEXT} across both modules. You know tmux.${R}\n"
+  echo
+  printf "  "
+  local i
+  for ((i = 1; i <= TOTAL; i++)); do printf "${C_OK}●${R} "; done
+  printf "\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}What you now know:${R}\n"
+  echo
+  printf "  ${C_OK}●${R} ${C_TEXT}Sessions${C_MUTED}        kill, switch, multiple sessions${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Pane geometry${C_MUTED}   resize, swap, layouts, move between windows${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Buffers${C_MUTED}         copy, paste, buffer list${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Introspection${C_MUTED}   help system, key tables, options${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Configuration${C_MUTED}   tmux.conf, custom bindings, source-file${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Sync panes${C_MUTED}      type once, run everywhere${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}Scripting${C_MUTED}       automated workspace setup, send-keys, targets${R}\n"
+  printf "  ${C_OK}●${R} ${C_TEXT}SSH + tmux${C_MUTED}      remote access, detach/reconnect, persist sessions${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_TEXT}${B}You are now a tmux power user.${R}\n"
+  echo
+  printf "  ${C_TEXT}Your ${C_ACCENT}~/.tmux.conf${C_TEXT} is your home base — keep refining it.${R}\n"
+  printf "  ${C_TEXT}Write startup scripts for your projects. Use tmux over SSH${R}\n"
+  printf "  ${C_TEXT}for everything remote. Press ${C_ACCENT}Ctrl+b ?${C_TEXT} when you forget a binding.${R}\n"
+  echo
+  hr
+  echo
+  printf "  ${C_MUTED}Clean up sessions created during the tutorial:${R}\n"
+  cmd "tmux kill-session -t adv"
+  cmd "tmux kill-session -t temp2"
+  cmd "tmux kill-session -t dev"
+  cmd "tmux kill-session -t remote"
+  cmd "tmux kill-session -t backend"
+  cmd "tmux kill-session -t frontend"
+  echo
+  rm -f "$PROGRESS_FILE" 2>/dev/null || true
+}
+
+# ── main ─────────────────────────────────────────────────────────────────────
+
+trap "save_progress; printf '\n\n  ${C_MUTED}Progress saved. Run ${C_ACCENT}$(basename "$0")${C_MUTED} to continue.${R}\n\n'; exit 0" INT
+
+main() {
+  load_progress
+
+  if [ "$CURRENT" -ge "$TOTAL" ]; then
+    show_completion
+    return
+  fi
+
+  local restarting=false
+
+  if [ "$CURRENT" -gt 0 ]; then
+    cls
+    echo
+    printf "  ${C_ACCENT}${B}tmux tutor — advanced${R}\n"
+    echo
+    printf "  ${C_MUTED}Welcome back. You left off at lesson %d / %d.${R}\n\n" "$((CURRENT + 1))" "$TOTAL"
+    draw_dots "$((CURRENT + 1))"
+    echo
+    hr
+    printf "\n  ${C_MUTED}[${C_TEXT}c${C_MUTED}] continue  [${C_TEXT}r${C_MUTED}] restart  [${C_TEXT}q${C_MUTED}] quit${R}  "
+    while true; do
+      local action
+      read -rsn1 action || true
+      case "${action:-}" in
+        c|C|"") break ;;
+        r|R) CURRENT=0; save_progress; restarting=true; break ;;
+        q|Q) echo; exit 0 ;;
+      esac
+    done
+  fi
+
+  if [ "$CURRENT" -eq 0 ] && ! $restarting; then
+    show_intro
+  fi
+
+  local i=$((CURRENT + 1))
+  while [ "$i" -le "$TOTAL" ]; do
+    run_lesson "$i"
+    local rc=$?
+    if [ "$rc" -eq 2 ] && [ "$i" -gt 1 ]; then
+      i=$((i - 1))
+      CURRENT=$((i - 1))
+      save_progress
+    else
+      CURRENT=$i
+      save_progress
+      i=$((i + 1))
+    fi
+  done
+
+  show_completion
+}
+
+main "$@"
