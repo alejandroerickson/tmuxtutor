@@ -249,7 +249,8 @@ h1 { font-size: 60px; line-height: 1; letter-spacing: -.035em; font-weight: 750;
 .cmdbox .pr { color: var(--muted); user-select: none; font-family: var(--mono); font-size: 14px; }
 .cmdbox code { font-size: 14px; white-space: nowrap; color: var(--ink); }
 .cmdbox code b { font-weight: 700; color: var(--accent-ink); }
-.run .alt .cmdbox, .cmdbox.alt { background: transparent; padding-top: 6px; padding-bottom: 6px; border-color: transparent; }
+.run .alt .cmdbox, .cmdbox.alt { background: transparent; padding-top: 6px; padding-bottom: 6px; }
+.cmdbox.fade { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
 .cmdbox.alt code { font-size: 13px; color: var(--muted); }
 .cmdbox.alt code b { color: var(--ink); font-weight: 650; }
 .run-name.alt { font-weight: 500; color: var(--muted); }
@@ -303,7 +304,7 @@ h2 { font-size: 26px; line-height: 1.15; letter-spacing: -.022em; font-weight: 7
 button.cap { appearance: none; cursor: pointer; }
 .cap.lit {
   background: var(--lit-bg); border-color: var(--lit-bg); color: var(--key-muted);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), inset 0 -3px 0 rgb(0 0 0 / .32), 0 1px 2px rgb(0 0 0 / .18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), inset 0 -3px 0 color-mix(in srgb, var(--key-accent) 22%, rgb(0 0 0 / .4)), 0 1px 2px rgb(0 0 0 / .18);
   transition: background-color .12s, transform .08s;
 }
 .cap.lit .on .lg, .cap.lit > .lg.on { color: var(--key-accent); }
@@ -331,7 +332,7 @@ button.cap { appearance: none; cursor: pointer; }
 
 /* readout */
 .readout { border-left: 1px solid var(--border); padding: 4px 0 4px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.ro-b + .ro-b { border-top: 1px solid var(--rule); padding-top: 16px; }
+.ro-b + .ro-b::before { content: ""; display: block; height: 1px; background: var(--rule); margin-bottom: 16px; }
 .ro-chip { display: inline-flex; align-items: center; gap: 8px; font: 14px/1 var(--mono); }
 .ro-chip kbd { font-size: 14px; padding: 6px 9px 7px; }
 .ro-chip .th { color: var(--muted); font-family: var(--mono); font-size: 13px; }
@@ -355,6 +356,7 @@ button.cap { appearance: none; cursor: pointer; }
 table.t { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; }
 table.t th, table.t td { text-align: left; vertical-align: top; padding: 5px 0; border-bottom: 1px solid var(--rule); }
 table.t th[scope="row"] { font-weight: 400; white-space: nowrap; padding-right: 14px; width: 1%; }
+table.t:not(.cmds) th[scope="row"] { width: 7.4em; }
 table.t td { color: var(--muted); }
 table.t code { color: var(--ink); font-size: 12.5px; }
 table.t kbd { font-size: 12px; padding: 3px 6px 4px; }
@@ -371,6 +373,9 @@ table.t.stack td { font-size: 13.5px; margin-top: 1px; }
 /* ── lessons ────────────────────────────────────────────── */
 .mods { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; align-items: start; margin-top: 8px; }
 .mod-h { display: flex; align-items: baseline; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); }
+.mod-more { grid-column: 1 / -1; margin-top: 40px; }
+.mod-cols { columns: 2; column-gap: 56px; }
+.mod-cols .lesson { break-inside: avoid; }
 .mod-h h3 { font-size: 18px; font-weight: 700; letter-spacing: -.015em; }
 .mod-h span { color: var(--muted); font-size: 14px; }
 .lesson { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px; padding: 18px 0 20px; border-bottom: 1px solid var(--rule); scroll-margin-top: 64px; }
@@ -387,6 +392,7 @@ dl.keys dt { white-space: nowrap; }
 dl.keys dd { margin: 0; font-size: 14.5px; }
 .note { font-size: 14px; color: var(--muted); }
 .note b { color: var(--ink); font-weight: 600; }
+.note code, .desc code, dl.keys code, ol.steps li code { white-space: nowrap; }
 .note code, .desc code, dl.keys code { color: var(--ink); background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
 .note kbd { font-size: 12px; }
 .check { font-size: 13.5px; color: var(--pass); display: flex; gap: 8px; align-items: flex-start; }
@@ -400,9 +406,9 @@ details.trouble summary { cursor: pointer; font-size: 13px; font-weight: 650; wi
 details.trouble summary::marker { color: var(--muted); }
 details.trouble[open] { display: flex; flex-direction: column; gap: 8px; }
 details.trouble[open] summary { margin-bottom: 2px; }
-table.os { border-collapse: collapse; width: 100%; table-layout: fixed; }
-table.os th, table.os td { text-align: left; vertical-align: top; padding: 0 0 6px; }
-table.os th[scope="row"] { font-size: 13.5px; font-weight: 600; width: 118px; padding: 8px 12px 0 0; white-space: nowrap; }
+table.os, table.os tbody, table.os tr, table.os th, table.os td { display: block; }
+table.os th, table.os td { text-align: left; padding: 0 0 6px; }
+table.os th[scope="row"] { font-size: 13.5px; font-weight: 600; padding: 6px 0 4px; }
 table.os td p { font-size: 13.5px; color: var(--muted); margin: 6px 0 4px; }
 
 footer { margin-top: 72px; border-top: 1px solid var(--border); padding: 20px 0 40px; font-size: 13.5px; color: var(--muted); }
@@ -414,12 +420,15 @@ footer .wrap { display: flex; gap: 8px 20px; flex-wrap: wrap; }
   .kb { min-width: 960px; }
   .kb-note { display: block; }
   .readout { border-left: 0; padding: 14px 0 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 14px 32px; }
-  .ro-b + .ro-b { border-top: 0; padding-top: 0; }
+  .ro-b + .ro-b::before { display: none; }
 }
 @media (max-width: 1100px) {
   .door-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .say { max-width: 36ch; }
   .mods { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .mod-more { margin-top: 0; }
+  .mod-more > .mod-h { display: none; }
+  .mod-cols { columns: 1; }
 }
 @media (max-width: 760px) {
   .wrap { padding: 0 16px; }
@@ -444,8 +453,6 @@ footer .wrap { display: flex; gap: 8px 20px; flex-wrap: wrap; }
   .ro-a { font-size: 17px; }
   .qr { columns: 1; }
   .lesson { grid-template-columns: 24px minmax(0, 1fr); column-gap: 8px; }
-  table.os th[scope="row"] { width: auto; display: block; padding: 6px 0 4px; }
-  table.os, table.os tbody, table.os tr, table.os td { display: block; }
   table.t.cmds tr:not(.cx) { display: block; border-bottom: 1px solid var(--rule); padding: 5px 0; }
   table.t.cmds tr:not(.cx) > * { display: block; border: 0; padding: 0; width: auto; white-space: normal; }
   table.t.cmds td { font-size: 13.5px; margin-top: 1px; }
@@ -1177,6 +1184,11 @@ Session "learn" is detached!</div>
           <p class="check"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 5.5 10.5 11.5 3.5"/></svg><span>Checks that session "adv" has at least 2 windows.</span></p>
         </div>
       </article>
+    </div>
+    </div>
+    <div class="mod mod-more">
+      <div class="mod-h"><h3>Advanced</h3><span>lessons 9&ndash;14</span></div>
+      <div class="mod-cols">
 
       <article class="lesson" id="a9" aria-labelledby="a9-t">
         <span class="ln" aria-hidden="true">9</span>
@@ -1334,7 +1346,7 @@ bind - split-window -v -c "#{pane_current_path}"</pre>
           <p class="check"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 5.5 10.5 11.5 3.5"/></svg><span>Checks both sessions exist with correct windows, pane counts, and marker text.</span></p>
         </div>
       </article>
-    </div>
+      </div>
     </div>
   </section>
 </main>
@@ -1409,6 +1421,14 @@ bind - split-window -v -c "#{pane_current_path}"</pre>
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
     } else { fallback(); }
+  });
+
+  /* ── long commands fade at the edge while they overflow ── */
+  document.querySelectorAll('.cmdbox').forEach(function (box) {
+    function sync() { box.classList.toggle('fade', box.scrollWidth - box.clientWidth - box.scrollLeft > 1); }
+    box.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
   });
 
   /* ── keyboard map ── */
