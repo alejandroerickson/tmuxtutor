@@ -64,11 +64,11 @@ passed.
 
 ## HTML reference companion
 
-A self-contained reference covering all 28 lessons and a quick reference card is
-available at **[alejandroerickson.com/tmuxtutor](https://alejandroerickson.com/tmuxtutor/)**.
+A self-contained reference with all 28 lessons, a keyboard map of every prefix
+binding, and a quick reference card is available at **[alejandroerickson.com/tmuxtutor](https://alejandroerickson.com/tmuxtutor/)**.
 
 <p align="center">
-  <img src="docs/images/html-reference.png" alt="HTML reference companion showing sidebar navigation and lesson content" width="700">
+  <img src="docs/images/html-reference.png" alt="The tmux tutor web page: the run commands beside a two-terminal scene, above a keyboard map of prefix bindings" width="700">
 </p>
 
 ## Screenshots
